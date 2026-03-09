@@ -3,78 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RI-BUILDING PRO STUDIO</title>
+    <title>RI-STUDIO | PRO RECORD</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
     <style>
         :root { --main-color: #ffaa00; --cam-scale: 1; }
-        body { 
-            background: #0a0a0a; color: white; font-family: sans-serif; 
-            margin: 0; display: flex; align-items: center; justify-content: center;
-            height: 100vh; overflow: hidden; 
-        }
+        body { background: #050505; color: white; font-family: sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
 
-        /* CADRU DREPT - FARA ROTUNJIRI */
+        /* VIEWPORT DREPT PENTRU TIKTOK */
         #phone-container {
             position: relative;
             width: 320px; height: 568px; 
-            background: #000; border: 3px solid #333; 
+            background: #000; border: 2px solid #333; 
             overflow: hidden; flex-shrink: 0;
-            box-shadow: 0 0 40px rgba(0,0,0,1);
         }
 
         #viewport { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; }
 
-        /* TRANZITIE CU ZOOM (EFFECT KEN BURNS) */
-        .slide-layer {
-            position: absolute; inset: 0; width: 100%; height: 100%;
-            object-fit: cover; opacity: 0; 
-            transition: opacity 1.2s ease-in-out;
-            transform: scale(1.1); /* Pornește cu un mic zoom */
-        }
-        .slide-active { 
-            opacity: 1; 
-            animation: zoomEffect 8s infinite alternate ease-in-out;
-        }
-        @keyframes zoomEffect {
-            from { transform: scale(1); }
-            to { transform: scale(1.15); }
-        }
+        /* KEN BURNS EFFECT */
+        .slide-layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.2s ease-in-out; transform: scale(1.1); }
+        .slide-active { opacity: 1; animation: zoomEffect 10s infinite alternate ease-in-out; }
+        @keyframes zoomEffect { from { transform: scale(1); } to { transform: scale(1.15); } }
         
-        /* CAMERA */
-        #webcam-layer { 
-            position: absolute; width: 140px; height: 105px; z-index: 20; cursor: grab; 
-            transform: scale(var(--cam-scale)); touch-action: none; 
-        }
-        #ai-canvas { width: 100%; height: 100%; object-fit: cover; border: 1px solid rgba(255,255,255,0.2); }
+        /* CAMERA & LOGO */
+        #webcam-layer { position: absolute; width: 140px; height: 105px; z-index: 20; cursor: grab; transform: scale(var(--cam-scale)); touch-action: none; }
+        #ai-canvas { width: 100%; height: 100%; object-fit: cover; }
+        #circle-group { position: absolute; width: 200px; height: 200px; z-index: 15; cursor: grab; display: flex; align-items: center; justify-content: center; }
+        #inner-circle { width: 110px; height: 110px; border: 3px solid var(--main-color); border-radius: 50%; z-index: 16; background: rgba(0,0,0,0.4); overflow: hidden; }
+        #draggable-text { position: absolute; z-index: 30; cursor: grab; font-size: 18px; font-weight: 900; color: white; text-shadow: 2px 2px 5px #000; white-space: nowrap; padding: 5px; }
 
-        /* LOGO CERC PERFECT */
-        #circle-group { 
-            position: absolute; width: 220px; height: 220px; z-index: 15; cursor: grab; 
-            display: flex; align-items: center; justify-content: center;
-        }
-        #inner-circle { 
-            width: 115px; height: 115px; border: 4px solid var(--main-color); 
-            border-radius: 50%; z-index: 16; background: rgba(0,0,0,0.4); overflow: hidden;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
-        }
-
-        #draggable-text { 
-            position: absolute; z-index: 30; cursor: grab; font-size: 19px; font-weight: 900; 
-            color: white; text-shadow: 2px 2px 10px rgba(0,0,0,1); white-space: nowrap; padding: 5px;
-        }
-
-        /* UI PANEL */
-        .ui-panel { margin-left: 20px; display: flex; flex-direction: column; gap: 8px; width: 290px; max-height: 95vh; overflow-y: auto; background: #111; padding: 15px; border: 1px solid #333; border-radius: 8px; }
+        /* UI */
+        .ui-panel { margin-left: 20px; display: flex; flex-direction: column; gap: 8px; width: 280px; background: #111; padding: 15px; border: 1px solid #333; }
         .cube { background: #1a1a1a; padding: 10px; border: 1px solid #333; border-radius: 4px; }
-        h4 { font-size: 10px; color: var(--main-color); text-transform: uppercase; margin-bottom: 5px; font-weight: bold; border-bottom: 1px solid #222; }
-        button { width: 100%; background: #333; color: white; padding: 8px; font-size: 11px; font-weight: bold; margin-bottom: 4px; transition: 0.2s; }
-        button:hover { background: #444; }
-        button.active { background: #059669 !important; }
-        .rec-btn { background: #e11d48 !important; border: none; }
-        .save-btn { background: #2563eb !important; display: none; margin-top: 5px; border: none; }
-        #timer { font-family: monospace; color: #e11d48; font-weight: bold; font-size: 18px; }
-        input[type="range"] { width: 100%; accent-color: var(--main-color); cursor: pointer; }
+        .rec-active { color: #ff0000; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+        button { width: 100%; background: #333; color: white; padding: 8px; font-size: 11px; font-weight: bold; margin-bottom: 4px; border-radius: 4px; }
+        .rec-btn { background: #dc2626 !important; }
+        .save-btn { background: #2563eb !important; display: none; }
     </style>
 </head>
 <body>
@@ -82,58 +47,47 @@
     <div id="phone-container">
         <div id="viewport">
             <div id="slide-container">
-                <img id="slide-1" class="slide-layer slide-active" src="">
-                <img id="slide-2" class="slide-layer" src="">
+                <img id="slide-1" class="slide-layer slide-active">
+                <img id="slide-2" class="slide-layer">
             </div>
-            
-            <div id="webcam-layer" style="top:20px; left:20px; display:none;">
-                <canvas id="ai-canvas"></canvas>
+            <div id="webcam-layer" style="top:20px; left:20px; display:none;"><canvas id="ai-canvas"></canvas></div>
+            <div id="circle-group" style="top:120px; left:60px;">
+                <div id="inner-circle"><img id="inner-img" style="width:100%; height:100%; object-fit:cover; display:none; border-radius: 50%;"></div>
             </div>
-
-            <div id="circle-group" style="top:120px; left:50px;">
-                <div id="inner-circle">
-                    <img id="inner-img" style="width:100%; height:100%; object-fit:cover; display:none; border-radius: 50%;">
-                </div>
-            </div>
-
             <div id="draggable-text" style="bottom:60px; left:40px;">WWW.RIBUILDING.RO</div>
         </div>
     </div>
 
     <div class="ui-panel">
-        <div class="cube" style="border: 1px solid #e11d48;">
-            <h4>🔴 STUDIO RECORDING</h4>
-            <button id="btn-rec" class="rec-btn" onclick="toggleRecording()">ÎNCEPE ÎNREGISTRAREA</button>
-            <div id="rec-info" style="text-align:center; display:none; margin:5px 0;">
-                <span id="timer">00:00</span>
+        <div class="cube" style="border-color: #dc2626;">
+            <h4>🔴 CONTROL RECORD</h4>
+            <button id="btn-rec" class="rec-btn" onclick="toggleRecording()">START RECORDING</button>
+            <div id="rec-status" style="font-size: 10px; text-align: center; margin-top: 5px;">
+                Status: <span id="status-text">Ready</span> <span id="rec-dot" style="display:none;">●</span>
             </div>
-            <button id="btn-save" class="save-btn" onclick="saveRecording()">💾 DESCARCĂ CLIPUL (.WEBM)</button>
+            <div id="timer" style="text-align:center; font-weight:bold; font-size: 18px;">00:00</div>
+            <button id="btn-save" class="save-btn" onclick="saveRecording()">💾 DESCARCĂ RECLAMA</button>
         </div>
 
         <div class="cube">
-            <h4>1. CONFIGURARE POZE</h4>
+            <h4>1. SLIDESHOW</h4>
+            <button onclick="document.getElementById('file-slides').click()">UPLOAD POZE</button>
             <input type="file" id="file-slides" multiple accept="image/*" style="display:none" onchange="loadSlides(this)">
-            <button onclick="document.getElementById('file-slides').click()">SELECTEAZĂ POZE</button>
-            <button id="btn-slide" onclick="toggleSlideshow()">PORNEȘTE SLIDESHOW</button>
-            <label style="font-size:9px; color:#888;">TIMP AFISARE (SEC): <span id="vitez-txt">4</span></label>
-            <input type="range" min="2" max="10" value="4" oninput="state.slideTime = this.value; document.getElementById('vitez-txt').innerText=this.value;">
+            <button id="btn-slide" onclick="toggleSlideshow()">SLIDESHOW: OFF</button>
         </div>
 
         <div class="cube">
-            <h4>2. CAMERĂ & VOCE</h4>
-            <button onclick="initCam()" style="background:#444">PORNEȘTE CAMERA</button>
-            <button id="btn-ai" onclick="toggleAI()">ELIMINĂ FUNDAL (AI)</button>
-            <input type="range" min="0.5" max="2" step="0.1" value="1" oninput="setCamScale(this.value)">
+            <h4>2. CAMERĂ</h4>
+            <button onclick="initCam()">START CAM</button>
+            <button id="btn-ai" onclick="toggleAI()">AI CUT: OFF</button>
         </div>
 
         <div class="cube">
-            <h4>3. LOGO & BRANDING</h4>
+            <h4>3. DESIGN</h4>
+            <button onclick="document.getElementById('file-inner').click()">LOAD LOGO</button>
             <input type="file" id="file-inner" style="display:none" onchange="loadInnerImage(this)">
-            <button onclick="document.getElementById('file-inner').click()">ÎNCARCĂ LOGO CERC</button>
-            <input type="text" style="width:100%; background:#000; border:1px solid #333; color:white; padding:6px; font-size:11px;" placeholder="Text URL..." oninput="updateText(this.value)">
+            <input type="text" style="width:100%; background:#000; border:1px solid #333; color:white; padding:5px; font-size:11px;" placeholder="Text site..." oninput="updateText(this.value)">
         </div>
-        
-        <button onclick="location.reload()" style="background:#222; font-size:9px; border-radius: 4px;">RESETARE TOTALĂ</button>
     </div>
 
     <video id="hidden-video" style="display:none" autoplay muted playsinline></video>
@@ -146,20 +100,15 @@
 
     function loadSlides(i) {
         slideshow.files = Array.from(i.files).map(f => URL.createObjectURL(f));
-        if(slideshow.files.length > 0) {
-            document.getElementById('slide-1').src = slideshow.files[0];
-            document.getElementById('slide-2').src = slideshow.files[0];
-        }
+        if(slideshow.files.length > 0) document.getElementById('slide-1').src = slideshow.files[0];
     }
 
     function changeSlide() {
         if (!state.isSlideshowActive || slideshow.files.length === 0) return;
         slideshow.idx = (slideshow.idx + 1) % slideshow.files.length;
-        
         const oldLayer = document.getElementById(`slide-${slideshow.currentLayer}`);
         slideshow.currentLayer = slideshow.currentLayer === 1 ? 2 : 1;
         const newLayer = document.getElementById(`slide-${slideshow.currentLayer}`);
-        
         newLayer.src = slideshow.files[slideshow.idx];
         newLayer.classList.add('slide-active');
         oldLayer.classList.remove('slide-active');
@@ -168,19 +117,90 @@
     function toggleSlideshow() {
         state.isSlideshowActive = !state.isSlideshowActive;
         document.getElementById('btn-slide').classList.toggle('active', state.isSlideshowActive);
-        if(state.isSlideshowActive) {
-            changeSlide(); // Start imediat
-            slideshow.int = setInterval(changeSlide, state.slideTime * 1000);
-        } else { clearInterval(slideshow.int); }
+        if(state.isSlideshowActive) slideshow.int = setInterval(changeSlide, state.slideTime * 1000);
+        else clearInterval(slideshow.int);
     }
 
+    // --- FUNCTIA DE RECORDING REVIZUITĂ ---
+    async function toggleRecording() {
+        const btn = document.getElementById('btn-rec');
+        const saveBtn = document.getElementById('btn-save');
+        const statusTxt = document.getElementById('status-text');
+        const dot = document.getElementById('rec-dot');
+
+        if (state.isRecording) {
+            // STOP
+            recorder.stop();
+            state.isRecording = false;
+            btn.innerText = "START RECORDING";
+            statusTxt.innerText = "Finalizat";
+            dot.style.display = "none";
+            clearInterval(timerInt);
+        } else {
+            // START
+            recordedChunks = [];
+            const viewport = document.getElementById('viewport');
+            const stream = viewport.captureStream(30); // 30 FPS constant
+
+            // Audio din camera/mic daca e activ
+            if (ai.stream) {
+                ai.stream.getAudioTracks().forEach(track => stream.addTrack(track));
+            }
+
+            // Detectare cel mai bun format
+            const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+            let supportedType = types.find(t => MediaRecorder.isTypeSupported(t));
+
+            try {
+                recorder = new MediaRecorder(stream, { mimeType: supportedType });
+                
+                recorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                        console.log("Date primite: ", e.data.size);
+                    }
+                };
+
+                recorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    blobUrl = URL.createObjectURL(blob);
+                    saveBtn.style.display = "block";
+                };
+
+                recorder.start(500); // Trimite date la fiecare jumatate de secunda
+                state.isRecording = true;
+                btn.innerText = "STOP RECORDING";
+                statusTxt.innerText = "Înregistrare...";
+                dot.style.display = "inline";
+                dot.className = "rec-active";
+
+                let s = 0;
+                timerInt = setInterval(() => {
+                    s++;
+                    const m = Math.floor(s/60).toString().padStart(2,'0');
+                    const sec = (s%60).toString().padStart(2,'0');
+                    document.getElementById('timer').innerText = `${m}:${sec}`;
+                }, 1000);
+
+            } catch (err) {
+                statusTxt.innerText = "Eroare: " + err.message;
+            }
+        }
+    }
+
+    function saveRecording() {
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `RECLAMA_RI_${Date.now()}.webm`;
+        a.click();
+    }
+
+    // --- RESTUL FUNCTIILOR ---
     async function initCam() {
-        try {
-            ai.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            document.getElementById('hidden-video').srcObject = ai.stream;
-            document.getElementById('webcam-layer').style.display = 'block';
-            setupAI();
-        } catch(e) { alert("Acces cameră refuzat."); }
+        ai.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('hidden-video').srcObject = ai.stream;
+        document.getElementById('webcam-layer').style.display = 'block';
+        setupAI();
     }
 
     function setupAI() {
@@ -202,53 +222,8 @@
     }
 
     function toggleAI() { state.isAI = !state.isAI; document.getElementById('btn-ai').classList.toggle('active'); }
-    function setCamScale(v) { document.documentElement.style.setProperty('--cam-scale', v); }
-
-    async function toggleRecording() {
-        const btn = document.getElementById('btn-rec');
-        const saveBtn = document.getElementById('btn-save');
-        if (state.isRecording) {
-            recorder.stop();
-            state.isRecording = false;
-            btn.innerText = "ÎNCEPE ÎNREGISTRAREA";
-            clearInterval(timerInt);
-            saveBtn.style.display = "block";
-        } else {
-            recordedChunks = [];
-            saveBtn.style.display = "none";
-            const stream = document.getElementById('viewport').captureStream(30);
-            
-            // Preluăm sunetul dacă camera/microfonul sunt pornite
-            if (ai.stream) {
-                ai.stream.getAudioTracks().forEach(track => stream.addTrack(track));
-            }
-            
-            recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
-            recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-            recorder.onstop = () => {
-                const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                blobUrl = URL.createObjectURL(blob);
-            };
-            recorder.start();
-            state.isRecording = true;
-            btn.innerText = "OPREȘTE ÎNREGISTRAREA";
-            document.getElementById('rec-info').style.display = "block";
-            let s = 0;
-            timerInt = setInterval(() => {
-                s++;
-                const m = Math.floor(s/60).toString().padStart(2,'0');
-                const sec = (s%60).toString().padStart(2,'0');
-                document.getElementById('timer').innerText = `${m}:${sec}`;
-            }, 1000);
-        }
-    }
-
-    function saveRecording() {
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = `RI-RECLAMA-${Date.now()}.webm`;
-        a.click();
-    }
+    function updateText(v) { document.getElementById('draggable-text').innerText = v; }
+    function loadInnerImage(i) { if(i.files[0]) { document.getElementById('inner-img').src = URL.createObjectURL(i.files[0]); document.getElementById('inner-img').style.display = 'block'; } }
 
     function makeDraggable(el) {
         let sx, sy;
@@ -258,16 +233,7 @@
             document.onmouseup = () => document.onmousemove = null;
         };
     }
-
     window.onload = () => { ['circle-group', 'webcam-layer', 'draggable-text'].forEach(id => makeDraggable(document.getElementById(id))); };
-    function updateText(v) { document.getElementById('draggable-text').innerText = v; }
-    function loadInnerImage(i) { 
-        if(i.files[0]) { 
-            const img = document.getElementById('inner-img');
-            img.src = URL.createObjectURL(i.files[0]); 
-            img.style.display = 'block'; 
-        } 
-    }
 </script>
 </body>
 </html>
