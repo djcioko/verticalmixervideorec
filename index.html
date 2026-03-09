@@ -3,43 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RI-STUDIO | FINAL FIX</title>
+    <title>RI-STUDIO | EFFECTS EDITION</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
     <style>
-        :root { --main-color: #ffaa00; --trans-time: 1.2s; }
-        body { background: #050505; color: white; font-family: sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        :root { --main-color: #ffaa00; --trans-time: 1.2s; --text-scale: 1; --cam-scale: 1; }
+        body { background: #080808; color: white; font-family: sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
 
+        /* VIEWPORT-UL PENTRU RECORD */
         #phone-container {
             position: relative;
             width: 320px; height: 568px; 
             background: #000; border: 2px solid #333; 
             overflow: hidden; flex-shrink: 0;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
         }
 
         #viewport { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; }
 
-        /* TRANZITIE SETABILA */
+        /* --- EFECTE TRANZITIE & ZOOM --- */
         .slide-layer { 
             position: absolute; inset: 0; width: 100%; height: 100%; 
             object-fit: cover; opacity: 0; 
             transition: opacity var(--trans-time) ease-in-out; 
+            transform: scale(1.1);
         }
-        .slide-active { opacity: 1; animation: zoomEffect 10s infinite alternate ease-in-out; }
+        /* Efectul Ken Burns care se activează pe poza vizibilă */
+        .slide-active { 
+            opacity: 1; 
+            animation: kenBurnsEffect 12s infinite alternate ease-in-out; 
+        }
         
-        @keyframes zoomEffect { from { transform: scale(1); } to { transform: scale(1.15); } }
+        @keyframes kenBurnsEffect { 
+            from { transform: scale(1); } 
+            to { transform: scale(1.18); } 
+        }
+
+        /* CAMERA & LOGO */
+        #webcam-layer { position: absolute; width: 140px; height: 105px; z-index: 20; cursor: grab; transform: scale(var(--cam-scale)); touch-action: none; }
+        #ai-canvas { width: 100%; height: 100%; object-fit: cover; }
         
         #circle-group { position: absolute; width: 200px; height: 200px; z-index: 15; cursor: grab; display: flex; align-items: center; justify-content: center; }
         #inner-circle { width: 110px; height: 110px; border: 3px solid var(--main-color); border-radius: 50%; z-index: 16; background: rgba(0,0,0,0.4); overflow: hidden; }
-        #draggable-text { position: absolute; z-index: 30; cursor: grab; font-size: 18px; font-weight: 900; color: white; text-shadow: 2px 2px 5px #000; white-space: nowrap; padding: 5px; }
+        
+        #draggable-text { 
+            position: absolute; z-index: 30; cursor: grab; font-weight: 900; 
+            color: white; text-shadow: 2px 2px 8px #000; white-space: nowrap; 
+            padding: 5px; transform: scale(var(--text-scale));
+        }
 
-        /* UI */
-        .ui-panel { margin-left: 20px; display: flex; flex-direction: column; gap: 8px; width: 280px; background: #111; padding: 15px; border: 1px solid #333; }
+        /* UI PANEL */
+        .ui-panel { margin-left: 20px; display: flex; flex-direction: column; gap: 8px; width: 310px; background: #111; padding: 15px; border: 1px solid #333; border-radius: 8px; max-height: 95vh; overflow-y: auto; }
         .cube { background: #1a1a1a; padding: 10px; border: 1px solid #333; border-radius: 4px; }
-        button { width: 100%; background: #333; color: white; padding: 8px; font-size: 11px; font-weight: bold; margin-bottom: 4px; border-radius: 4px; }
-        .rec-btn { background: #dc2626 !important; }
-        .save-btn { background: #2563eb !important; display: none; margin-top: 10px; }
+        h4 { font-size: 10px; color: var(--main-color); text-transform: uppercase; margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #222; letter-spacing: 1px; }
+        button { width: 100%; background: #333; color: white; padding: 7px; font-size: 11px; font-weight: bold; margin-bottom: 4px; border-radius: 4px; }
+        button.active { background: #059669 !important; }
         input[type="range"] { width: 100%; accent-color: var(--main-color); cursor: pointer; }
-        .label-val { color: var(--main-color); font-weight: bold; }
+        .label-row { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -50,7 +70,8 @@
                 <img id="slide-1" class="slide-layer slide-active">
                 <img id="slide-2" class="slide-layer">
             </div>
-            <div id="circle-group" style="top:120px; left:50px;">
+            <div id="webcam-layer" style="top:20px; left:20px; display:none;"><canvas id="ai-canvas"></canvas></div>
+            <div id="circle-group" style="top:120px; left:60px;">
                 <div id="inner-circle"><img id="inner-img" style="width:100%; height:100%; object-fit:cover; display:none; border-radius: 50%;"></div>
             </div>
             <div id="draggable-text" style="bottom:60px; left:40px;">WWW.RIBUILDING.RO</div>
@@ -58,53 +79,64 @@
     </div>
 
     <div class="ui-panel">
-        <div class="cube" style="border-color: #dc2626;">
-            <h4>🔴 RECORD ENGINE</h4>
-            <button id="btn-rec" class="rec-btn" onclick="toggleRecording()">START RECORD</button>
-            <div id="timer" style="text-align:center; font-weight:bold; font-size: 18px;">00:00</div>
-            <button id="btn-save" class="save-btn" onclick="saveRecording()">💾 DESCARCĂ RECLAMA</button>
-        </div>
-
         <div class="cube">
-            <h4>1. SLIDESHOW SETTINGS</h4>
-            <button onclick="document.getElementById('file-slides').click()">ÎNCARCĂ POZE</button>
+            <h4>1. EFECTE SLIDESHOW</h4>
+            <button onclick="document.getElementById('file-slides').click()">UPLOAD FOTO PROIECT</button>
             <input type="file" id="file-slides" multiple accept="image/*" style="display:none" onchange="loadSlides(this)">
             
-            <label style="font-size: 10px; color: #888;">TIMP SCHIMBARE: <span id="val-slide" class="label-val">4</span>s</label>
+            <div class="label-row"><span>TIMP POZĂ:</span><span id="val-slide">4</span>s</div>
             <input type="range" min="1" max="15" value="4" oninput="updateSlideTime(this.value)">
 
-            <label style="font-size: 10px; color: #888;">DURATĂ TRANZIȚIE: <span id="val-trans" class="label-val">1.2</span>s</label>
+            <div class="label-row"><span>DURATĂ TRANZIȚIE:</span><span id="val-trans">1.2</span>s</div>
             <input type="range" min="0.1" max="4" step="0.1" value="1.2" oninput="updateTransTime(this.value)">
             
-            <button id="btn-slide" onclick="toggleSlideshow()" style="margin-top:5px;">PLAY SLIDESHOW</button>
+            <button id="btn-slide" onclick="toggleSlideshow()" style="margin-top:5px; border: 1px solid #555;">START EFECTE</button>
         </div>
 
         <div class="cube">
-            <h4>2. BRANDING</h4>
-            <button onclick="document.getElementById('file-inner').click()">LOAD LOGO</button>
-            <input type="file" id="file-inner" style="display:none" onchange="loadInnerImage(this)">
-            <input type="text" style="width:100%; background:#000; border:1px solid #333; color:white; padding:5px; font-size:11px;" placeholder="Text site..." oninput="document.getElementById('draggable-text').innerText=this.value">
+            <h4>2. CAMERĂ DEVICE</h4>
+            <button onclick="initCam()">ACTIVEAZĂ CAMERA</button>
+            <button id="btn-ai" onclick="toggleAI()">AI CUT (TRANSPARENT)</button>
+            <div class="label-row"><span>SCALARE CAMERĂ:</span></div>
+            <input type="range" min="0.5" max="3" step="0.1" value="1" oninput="setCamScale(this.value)">
         </div>
+
+        <div class="cube">
+            <h4>3. TEXT & BRANDING</h4>
+            <input type="text" style="width:100%; background:#000; border:1px solid #333; color:white; padding:5px; font-size:11px;" placeholder="Site-ul tău..." oninput="document.getElementById('draggable-text').innerText=this.value">
+            
+            <div class="label-row"><span>MĂRIME TEXT:</span></div>
+            <input type="range" min="0.5" max="4" step="0.1" value="1" oninput="setTextScale(this.value)">
+            
+            <div class="label-row"><span>CULOARE SELECTIE:</span></div>
+            <input type="color" value="#ffffff" style="width:100%; height:20px; background:none; border:none; cursor:pointer;" oninput="document.getElementById('draggable-text').style.color=this.value">
+            
+            <button onclick="document.getElementById('file-inner').click()" style="margin-top:8px;">SCHIMBĂ LOGO CERC</button>
+            <input type="file" id="file-inner" style="display:none" onchange="loadInnerImage(this)">
+        </div>
+        
+        <button onclick="location.reload()" style="background:#550000; font-size:9px; opacity: 0.6;">RESET STUDIO</button>
     </div>
 
-<script>
-    let state = { isRecording: false, isSlideshowActive: false, slideTime: 4 };
-    let slideshow = { files: [], idx: 0, int: null, currentLayer: 1 };
-    let recorder, recordedChunks = [], timerInt, blobUrl;
+    <video id="hidden-video" style="display:none" autoplay muted playsinline></video>
 
-    // 1. SETĂRI TIMP
+<script>
+    let state = { isAI: false, isSlideshowActive: false, slideTime: 4 };
+    let slideshow = { files: [], idx: 0, int: null, currentLayer: 1 };
+    let ai = { selfie: null, stream: null };
+
     function updateSlideTime(val) {
         state.slideTime = val;
         document.getElementById('val-slide').innerText = val;
         if (state.isSlideshowActive) restartSlideshow();
     }
-
     function updateTransTime(val) {
         document.getElementById('val-trans').innerText = val;
         document.documentElement.style.setProperty('--trans-time', val + 's');
     }
+    function setTextScale(v) { document.getElementById('draggable-text').style.transform = `scale(${v})`; }
+    function setCamScale(v) { document.getElementById('webcam-layer').style.transform = `scale(${v})`; }
 
-    // 2. LOGICĂ SLIDESHOW
     function loadSlides(i) {
         slideshow.files = Array.from(i.files).map(f => URL.createObjectURL(f));
         if(slideshow.files.length > 0) document.getElementById('slide-1').src = slideshow.files[0];
@@ -116,7 +148,6 @@
         const oldLayer = document.getElementById(`slide-${slideshow.currentLayer}`);
         slideshow.currentLayer = slideshow.currentLayer === 1 ? 2 : 1;
         const newLayer = document.getElementById(`slide-${slideshow.currentLayer}`);
-        
         newLayer.src = slideshow.files[slideshow.idx];
         newLayer.classList.add('slide-active');
         oldLayer.classList.remove('slide-active');
@@ -125,8 +156,8 @@
     function toggleSlideshow() {
         state.isSlideshowActive = !state.isSlideshowActive;
         const btn = document.getElementById('btn-slide');
-        btn.innerText = state.isSlideshowActive ? "STOP SLIDESHOW" : "PLAY SLIDESHOW";
-        btn.style.background = state.isSlideshowActive ? "#059669" : "#333";
+        btn.innerText = state.isSlideshowActive ? "STOP EFECTE" : "START EFECTE";
+        btn.classList.toggle('active', state.isSlideshowActive);
         if(state.isSlideshowActive) restartSlideshow();
         else clearInterval(slideshow.int);
     }
@@ -136,64 +167,35 @@
         slideshow.int = setInterval(changeSlide, state.slideTime * 1000);
     }
 
-    // 3. ÎNREGISTRARE (TESTATĂ PENTRU SLIDESHOW)
-    async function toggleRecording() {
-        const btn = document.getElementById('btn-rec');
-        const saveBtn = document.getElementById('btn-save');
-
-        if (state.isRecording) {
-            recorder.stop();
-            state.isRecording = false;
-            btn.innerText = "START RECORD";
-            btn.style.background = "#dc2626";
-            clearInterval(timerInt);
-        } else {
-            recordedChunks = [];
-            // CAPTURĂ DIRECTĂ DIN VIEWPORT
-            const stream = document.getElementById('viewport').captureStream(30); 
-            
-            recorder = new MediaRecorder(stream, { 
-                mimeType: 'video/webm;codecs=vp9',
-                videoBitsPerSecond: 5000000 // Calitate ridicată
-            });
-
-            recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-            recorder.onstop = () => {
-                const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                blobUrl = URL.createObjectURL(blob);
-                saveBtn.style.display = "block";
-            };
-
-            recorder.start();
-            state.isRecording = true;
-            btn.innerText = "STOP RECORDING";
-            btn.style.background = "#1d4ed8";
-
-            let s = 0;
-            timerInt = setInterval(() => {
-                s++;
-                const m = Math.floor(s/60).toString().padStart(2,'0');
-                const sec = (s%60).toString().padStart(2,'0');
-                document.getElementById('timer').innerText = `${m}:${sec}`;
-            }, 1000);
-        }
+    async function initCam() {
+        try {
+            ai.stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            document.getElementById('hidden-video').srcObject = ai.stream;
+            document.getElementById('webcam-layer').style.display = 'block';
+            setupAI();
+        } catch(e) { alert("Cameră inaccesibilă."); }
     }
 
-    function saveRecording() {
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = `RECLAMA_RI_${Date.now()}.webm`;
-        a.click();
+    function setupAI() {
+        ai.selfie = new SelfieSegmentation({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`});
+        ai.selfie.setOptions({ modelSelection: 1 });
+        ai.selfie.onResults(res => {
+            const c = document.getElementById('ai-canvas'), ctx = c.getContext('2d');
+            c.width = res.image.width; c.height = res.image.height;
+            ctx.clearRect(0,0,c.width,c.height);
+            if(state.isAI) {
+                ctx.globalCompositeOperation = 'copy';
+                ctx.drawImage(res.segmentationMask, 0, 0, c.width, c.height);
+                ctx.globalCompositeOperation = 'source-in';
+            }
+            ctx.drawImage(res.image, 0, 0, c.width, c.height);
+        });
+        const predict = async () => { await ai.selfie.send({image: document.getElementById('hidden-video')}); requestAnimationFrame(predict); };
+        predict();
     }
 
-    // UTILS
-    function loadInnerImage(i) { 
-        if(i.files[0]) { 
-            const img = document.getElementById('inner-img');
-            img.src = URL.createObjectURL(i.files[0]); 
-            img.style.display = 'block'; 
-        } 
-    }
+    function toggleAI() { state.isAI = !state.isAI; document.getElementById('btn-ai').classList.toggle('active'); }
+    function loadInnerImage(i) { if(i.files[0]) { document.getElementById('inner-img').src = URL.createObjectURL(i.files[0]); document.getElementById('inner-img').style.display = 'block'; } }
 
     function makeDraggable(el) {
         let sx, sy;
@@ -203,7 +205,7 @@
             document.onmouseup = () => document.onmousemove = null;
         };
     }
-    window.onload = () => { ['circle-group', 'draggable-text'].forEach(id => makeDraggable(document.getElementById(id))); };
+    window.onload = () => { ['circle-group', 'webcam-layer', 'draggable-text'].forEach(id => makeDraggable(document.getElementById(id))); };
 </script>
 </body>
 </html>
