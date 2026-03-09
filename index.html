@@ -2,132 +2,68 @@
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MV STUDIO VERTICAL - PRO REC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MV STUDIO PRO - SQUARE EDITION</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
     <style>
-        :root { 
-            --main-color: #ffaa00; 
-            --pulse: 1; 
-            --cerc-scale: 1; 
-            --cam-scale: 1; 
-            --text-scale: 1;
-        }
+        :root { --main-color: #ffaa00; --pulse: 1; --cerc-scale: 1; --cam-scale: 1; --text-scale: 1; }
         body { 
-            background: #050505; 
-            color: white; 
-            font-family: 'Segoe UI', Tahoma, sans-serif; 
-            margin: 0; 
-            display: flex; 
-            flex-direction: row; 
-            align-items: center; 
-            justify-content: center;
-            min-height: 100vh; 
-            overflow: hidden; 
-            padding: 20px;
+            background: #000; color: white; font-family: sans-serif; 
+            margin: 0; display: flex; align-items: center; justify-content: center;
+            height: 100vh; overflow: hidden; 
         }
 
-        /* FRAME TELEFON (9:16) */
+        /* CADRU DREPT (FARA ROTUNJIRI) */
         #phone-container {
             position: relative;
-            width: 360px; 
-            height: 640px; 
+            width: 320px; /* Mai mic pentru vizibilitate pe laptop */
+            height: 568px; 
             background: #000;
-            border: 12px solid #1a1a1a;
-            border-radius: 40px;
+            border: 4px solid #333; /* Border discret, drept */
             overflow: hidden;
-            box-shadow: 0 0 40px rgba(0,0,0,1), 0 0 15px var(--main-color);
             flex-shrink: 0;
-            z-index: 1;
+            box-shadow: 0 0 30px rgba(0,0,0,1);
         }
 
-        #viewport {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            overflow: hidden;
-        }
+        #viewport { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; }
 
-        /* SLIDESHOW ENGINE */
         .slide-layer {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0;
-            transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
-            filter: brightness(0.7);
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            object-fit: cover; opacity: 0; transition: all 0.8s ease-in-out;
+            filter: brightness(0.8);
         }
-        .slide-active { opacity: 1; transform: scale(1); }
+        .slide-active { opacity: 1; }
         
-        /* TRANZITII RANDOM */
-        .fx-zoom { transform: scale(1.3); }
-        .fx-slide-up { transform: translateY(100%); }
-        .fx-rotate { transform: rotate(10deg) scale(1.2); }
-        .fx-blur { filter: blur(20px) brightness(0); }
-
-        #color-overlay { 
-            position: absolute; inset: 0; 
-            background: var(--main-color); 
-            mix-blend-mode: overlay; opacity: 0.25; 
-            z-index: 2; pointer-events: none; 
-        }
-
         /* LAYERS */
-        #webcam-layer { 
-            position: absolute; width: 160px; height: 120px; z-index: 10; cursor: grab; 
-            transform: scale(var(--cam-scale)); touch-action: none;
-        }
-        #webcam-layer.in-circle {
-            width: 140px !important; height: 140px !important; border-radius: 50% !important;
-            position: relative !important; z-index: 17; overflow: hidden;
-        }
+        #webcam-layer { position: absolute; width: 140px; height: 105px; z-index: 10; cursor: grab; transform: scale(var(--cam-scale)); touch-action: none; }
+        #webcam-layer.in-circle { width: 120px !important; height: 120px !important; position: relative !important; z-index: 17; overflow: hidden; }
         #ai-canvas { width: 100%; height: 100%; object-fit: cover; }
 
         #circle-group { 
-            position: absolute; width: 250px; height: 250px; z-index: 15; cursor: grab; 
+            position: absolute; width: 220px; height: 220px; z-index: 15; cursor: grab; 
             display: flex; align-items: center; justify-content: center;
             transform: scale(calc(var(--pulse) * var(--cerc-scale))); 
-            touch-action: none;
         }
-        #radial-canvas { position: absolute; width: 350px; height: 350px; pointer-events: none; }
-        #inner-circle { 
-            width: 140px; height: 140px; border-radius: 50%; border: 4px solid var(--main-color); 
-            overflow: hidden; z-index: 16; background: #000;
-        }
+        #radial-canvas { position: absolute; width: 300px; height: 300px; pointer-events: none; }
+        #inner-circle { width: 120px; height: 120px; border: 3px solid var(--main-color); z-index: 16; background: #000; overflow: hidden; }
 
         #draggable-text { 
-            position: absolute; z-index: 30; cursor: grab; font-size: 26px; font-weight: 900; 
-            color: white; text-shadow: 0 0 12px var(--main-color); white-space: nowrap; 
-            transform: scale(var(--text-scale)); touch-action: none; padding: 10px;
+            position: absolute; z-index: 30; cursor: grab; font-size: 20px; font-weight: 900; 
+            color: white; text-shadow: 0 0 10px var(--main-color); white-space: nowrap; 
+            transform: scale(var(--text-scale)); padding: 5px;
         }
 
-        /* UI PANEL (SIDE) */
-        .ui-panel {
-            margin-left: 30px;
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-            background: #111;
-            padding: 20px;
-            border-radius: 20px;
-            border: 1px solid #333;
-            width: 320px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .cube { background: #1a1a1a; padding: 12px; border-radius: 10px; border: 1px solid #222; }
-        h4 { font-size: 11px; color: var(--main-color); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px;}
-        button { width: 100%; background: #2a2a2a; color: white; padding: 8px; font-size: 11px; font-weight: bold; border-radius: 6px; margin-bottom: 5px; transition: 0.2s; }
-        button:hover { background: #3a3a3a; }
-        button.active { background: #00aa00 !important; }
-        input[type="range"] { width: 100%; accent-color: var(--main-color); margin: 5px 0; }
-        input[type="text"] { width: 100%; background: #000; border: 1px solid #333; color: white; font-size: 12px; padding: 8px; border-radius: 6px; }
-        .rec-active { animation: blink 1s infinite; color: #ff0000; font-weight: bold; }
-        @keyframes blink { 50% { opacity: 0; } }
+        /* UI PANEL */
+        .ui-panel { margin-left: 20px; display: flex; flex-direction: column; gap: 10px; width: 300px; max-height: 95vh; overflow-y: auto; background: #111; padding: 15px; border: 1px solid #222; }
+        .cube { background: #1a1a1a; padding: 10px; border: 1px solid #333; }
+        h4 { font-size: 10px; color: var(--main-color); text-transform: uppercase; margin-bottom: 5px; }
+        button { width: 100%; background: #333; color: white; padding: 7px; font-size: 11px; font-weight: bold; margin-bottom: 4px; border: 1px solid #444; }
+        button.active { background: #059669 !important; }
+        .rec-btn { background: #dc2626 !important; }
+        .save-btn { background: #2563eb !important; display: none; }
+        input[type="range"] { width: 100%; accent-color: var(--main-color); }
+        #timer { font-family: monospace; color: #dc2626; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -138,157 +74,120 @@
                 <img id="slide-1" class="slide-layer slide-active">
                 <img id="slide-2" class="slide-layer">
             </div>
-
-            <div id="color-overlay"></div>
-            
-            <div id="webcam-layer" style="top:30px; left:30px;">
-                <canvas id="ai-canvas"></canvas>
+            <div id="webcam-layer" style="top:20px; left:20px;"><canvas id="ai-canvas"></canvas></div>
+            <div id="circle-group" style="top:120px; left:50px;">
+                <canvas id="radial-canvas" width="300" height="300"></canvas>
+                <div id="inner-circle"><img id="inner-img" style="width:100%; height:100%; object-fit:cover; display:none;"></div>
             </div>
-            
-            <div id="circle-group" style="top:200px; left:55px;">
-                <canvas id="radial-canvas" width="350" height="350"></canvas>
-                <div id="inner-circle">
-                    <img id="inner-img" style="width:100%; height:100%; object-fit:cover; display:none;">
-                </div>
-            </div>
-
-            <div id="draggable-text" style="bottom:80px; left:60px;">STUDIO LIVE</div>
+            <div id="draggable-text" style="bottom:60px; left:40px;">WWW.RIBUILDING.RO</div>
         </div>
     </div>
 
     <div class="ui-panel">
-        <div class="cube" style="border: 2px solid #e11d48;">
-            <h4>🔴 Record & Export</h4>
-            <button id="btn-rec" onclick="toggleRecording()" style="background:#e11d48; font-size: 13px;">START RECORDING</button>
-            <div id="rec-status" style="text-align:center; font-size:10px; margin-top:5px; display:none;">
-                <span class="rec-active">● REC</span> <span id="timer">00:00</span>
+        <div class="cube" style="border-color: #dc2626;">
+            <h4>🔴 Recording System</h4>
+            <button id="btn-rec" class="rec-btn" onclick="toggleRecording()">START RECORD</button>
+            <button id="btn-save" class="save-btn" onclick="saveRecording()">💾 DESCARCĂ CLIP (MP4)</button>
+            <div id="rec-info" style="text-align:center; font-size:12px; display:none;">
+                STATUS: <span id="timer">00:00</span>
             </div>
         </div>
 
         <div class="cube">
-            <h4>1. Slideshow (Vertical)</h4>
+            <h4>1. Slideshow</h4>
             <input type="file" id="file-slides" multiple accept="image/*" style="display:none" onchange="loadSlides(this)">
             <button onclick="document.getElementById('file-slides').click()">UPLOAD POZE</button>
-            <button id="btn-slide" onclick="toggleSlideshow()">MOD SLIDE: OFF</button>
+            <button id="btn-slide" onclick="toggleSlideshow()">SLIDE: OFF</button>
             <input type="range" min="1" max="15" value="5" oninput="state.slideTime = this.value">
         </div>
 
         <div class="cube">
             <h4>2. Camera AI</h4>
-            <button onclick="initCam()" style="background:var(--main-color); color:black">ACTIVAȚI CAMERA</button>
+            <button onclick="initCam()" style="background:#444">START CAMERA</button>
             <button id="btn-ai" onclick="toggleAI()">AI CUT: OFF</button>
             <button id="btn-mode" onclick="toggleCamMode()">MOD: NORMAL</button>
-            <input type="range" min="0.5" max="3" step="0.1" value="1" oninput="setCamScale(this.value)">
+            <input type="range" min="0.5" max="2.5" step="0.1" value="1" oninput="setCamScale(this.value)">
         </div>
 
         <div class="cube">
             <h4>3. Cerc & Audio</h4>
             <button id="btn-ic" onclick="toggleInnerImage()">IMG CERC: OFF</button>
             <input type="file" id="file-inner" style="display:none" onchange="loadInnerImage(this)">
-            <button onclick="document.getElementById('file-inner').click()">LOAD IMG CERC</button>
+            <button onclick="document.getElementById('file-inner').click()">LOAD LOGO</button>
             <input type="range" min="0.5" max="2" step="0.1" value="1" oninput="setCercScale(this.value)">
         </div>
 
         <div class="cube">
             <h4>4. Personalizare</h4>
-            <input type="text" placeholder="Scrie ceva..." oninput="updateText(this.value)">
-            <input type="color" value="#ffaa00" style="height:30px; border:none; padding:0; background:none;" oninput="updateColor(this.value)">
-            <button onclick="location.reload()" style="margin-top:10px; background:#444;">RESET PAGINĂ</button>
+            <input type="text" id="text-input" placeholder="Text..." oninput="updateText(this.value)">
+            <button onclick="location.reload()" style="background:#b91c1c; margin-top:10px;">RESET TOTAL</button>
         </div>
     </div>
 
     <video id="hidden-video" style="display:none" autoplay muted playsinline></video>
 
 <script>
-    let state = {
-        mainColor: '#ffaa00',
-        cercScale: 1,
-        camScale: 1,
-        isAI: false,
-        isCamInCircle: false,
-        isSlideshowActive: false,
-        isRecording: false,
-        slideTime: 5,
-        innerImageVisible: false,
-        pulse: 1
-    };
-
+    let state = { mainColor: '#ffaa00', cercScale: 1, camScale: 1, isAI: false, isCamInCircle: false, isSlideshowActive: false, isRecording: false, slideTime: 5, innerImageVisible: false, pulse: 1 };
     let slideshow = { files: [], idx: 0, int: null, currentLayer: 1 };
     let audio = { ctx: null, analyzer: null, data: null };
     let ai = { selfie: null, stream: null };
-    let recorder;
-    let recordedChunks = [];
-    let timerInt;
+    let recorder, recordedChunks = [], timerInt, startTime, blobUrl;
 
-    // TRANZITII RANDOM
-    const fxList = ['fx-zoom', 'fx-slide-up', 'fx-rotate', 'fx-blur'];
-
+    // SLIDESHOW
     function changeSlide() {
         if (!state.isSlideshowActive || slideshow.files.length === 0) return;
         const nextIdx = (slideshow.idx + 1) % slideshow.files.length;
         const current = document.getElementById(`slide-${slideshow.currentLayer}`);
         slideshow.currentLayer = slideshow.currentLayer === 1 ? 2 : 1;
         const next = document.getElementById(`slide-${slideshow.currentLayer}`);
-
         next.src = slideshow.files[nextIdx];
-        next.className = 'slide-layer';
-        const randomFx = fxList[Math.floor(Math.random() * fxList.length)];
-        next.classList.add(randomFx);
-
-        setTimeout(() => {
-            next.classList.add('slide-active');
-            next.classList.remove(randomFx);
-            current.classList.remove('slide-active');
-        }, 100);
+        setTimeout(() => { next.classList.add('slide-active'); current.classList.remove('slide-active'); }, 50);
         slideshow.idx = nextIdx;
     }
 
     function toggleSlideshow() {
         state.isSlideshowActive = !state.isSlideshowActive;
         const btn = document.getElementById('btn-slide');
-        btn.innerText = `MOD SLIDE: ${state.isSlideshowActive ? 'ON' : 'OFF'}`;
+        btn.innerText = `SLIDE: ${state.isSlideshowActive ? 'ON' : 'OFF'}`;
         btn.classList.toggle('active', state.isSlideshowActive);
         if(state.isSlideshowActive && slideshow.files.length > 0) {
             document.getElementById('slide-1').src = slideshow.files[0];
-            document.getElementById('slide-1').classList.add('slide-active');
             slideshow.int = setInterval(changeSlide, state.slideTime * 1000);
         } else { clearInterval(slideshow.int); }
     }
 
-    function loadSlides(i) {
-        slideshow.files = Array.from(i.files).map(f => URL.createObjectURL(f));
-        alert(slideshow.files.length + " poze încărcate!");
-    }
+    function loadSlides(i) { slideshow.files = Array.from(i.files).map(f => URL.createObjectURL(f)); }
 
-    // RECORDING ENGINE
+    // RECORDING
     async function toggleRecording() {
         const btn = document.getElementById('btn-rec');
-        const status = document.getElementById('rec-status');
+        const saveBtn = document.getElementById('btn-save');
+        const info = document.getElementById('rec-info');
+
         if (state.isRecording) {
             recorder.stop();
             state.isRecording = false;
-            btn.innerText = "START RECORDING";
-            status.style.display = "none";
+            btn.innerText = "START RECORD";
             clearInterval(timerInt);
+            saveBtn.style.display = "block"; // Aratam butonul de salvare la final
         } else {
             recordedChunks = [];
+            saveBtn.style.display = "none";
             const stream = document.getElementById('viewport').captureStream(30);
-            if (ai.stream && ai.stream.getAudioTracks().length > 0) {
-                stream.addTrack(ai.stream.getAudioTracks()[0]);
-            }
-            recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9,opus' });
+            if (ai.stream) ai.stream.getAudioTracks().forEach(track => stream.addTrack(track));
+            
+            const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+            recorder = new MediaRecorder(stream, options);
             recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
             recorder.onstop = () => {
-                const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = `MV-REC-${Date.now()}.webm`;
-                a.click();
+                const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+                blobUrl = URL.createObjectURL(blob);
             };
+
             recorder.start();
             state.isRecording = true;
-            btn.innerText = "STOP & SALVEAZĂ";
-            status.style.display = "block";
+            btn.innerText = "STOP RECORD";
+            info.style.display = "block";
             let s = 0;
             timerInt = setInterval(() => {
                 s++;
@@ -299,14 +198,20 @@
         }
     }
 
+    function saveRecording() {
+        if (!blobUrl) return;
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `MIXER-VIDEO-${Date.now()}.mp4`;
+        a.click();
+    }
+
     // CAMERA & AI
     async function initCam() {
-        try {
-            ai.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            document.getElementById('hidden-video').srcObject = ai.stream;
-            setupAudio(ai.stream);
-            setupAI();
-        } catch(e) { alert("Acces cameră refuzat!"); }
+        ai.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('hidden-video').srcObject = ai.stream;
+        setupAudio(ai.stream);
+        setupAI();
     }
 
     function setupAI() {
@@ -323,10 +228,7 @@
             }
             ctx.drawImage(res.image, 0, 0, c.width, c.height);
         });
-        const predict = async () => { 
-            await ai.selfie.send({image: document.getElementById('hidden-video')}); 
-            requestAnimationFrame(predict); 
-        };
+        const predict = async () => { await ai.selfie.send({image: document.getElementById('hidden-video')}); requestAnimationFrame(predict); };
         predict();
     }
 
@@ -338,16 +240,16 @@
         audio.data = new Uint8Array(audio.analyzer.frequencyBinCount);
         function draw() {
             audio.analyzer.getByteFrequencyData(audio.data);
-            state.pulse = 1 + (audio.data[2]/255) * 0.15;
+            state.pulse = 1 + (audio.data[2]/255) * 0.12;
             document.documentElement.style.setProperty('--pulse', state.pulse);
             const ctx = document.getElementById('radial-canvas').getContext('2d');
-            ctx.clearRect(0,0,350,350);
-            ctx.strokeStyle = state.mainColor; ctx.lineWidth = 5;
-            for(let i=0; i<40; i++) {
-                let a = (i * Math.PI * 2) / 40, val = audio.data[i*2] * 0.5;
+            ctx.clearRect(0,0,300,300);
+            ctx.strokeStyle = state.mainColor; ctx.lineWidth = 4;
+            for(let i=0; i<30; i++) {
+                let a = (i * Math.PI * 2) / 30, val = audio.data[i*2] * 0.4;
                 ctx.beginPath();
-                ctx.moveTo(175 + Math.cos(a)*75, 175 + Math.sin(a)*75);
-                ctx.lineTo(175 + Math.cos(a)*(75+val), 175 + Math.sin(a)*(75+val));
+                ctx.moveTo(150 + Math.cos(a)*60, 150 + Math.sin(a)*60);
+                ctx.lineTo(150 + Math.cos(a)*(60+val), 150 + Math.sin(a)*(60+val));
                 ctx.stroke();
             }
             requestAnimationFrame(draw);
@@ -355,54 +257,28 @@
         draw();
     }
 
-    // UTILS
     function makeDraggable(el) {
         let sx, sy;
         el.onmousedown = e => {
-            if(e.target.tagName === 'BUTTON') return;
             sx = e.clientX - el.offsetLeft; sy = e.clientY - el.offsetTop;
-            document.onmousemove = me => {
-                el.style.left = (me.clientX - sx) + 'px';
-                el.style.top = (me.clientY - sy) + 'px';
-            };
+            document.onmousemove = me => { el.style.left = (me.clientX - sx) + 'px'; el.style.top = (me.clientY - sy) + 'px'; };
             document.onmouseup = () => document.onmousemove = null;
         };
     }
 
-    window.onload = () => {
-        ['circle-group', 'webcam-layer', 'draggable-text'].forEach(id => makeDraggable(document.getElementById(id)));
-    };
-
+    window.onload = () => { ['circle-group', 'webcam-layer', 'draggable-text'].forEach(id => makeDraggable(document.getElementById(id))); };
     function toggleAI() { state.isAI = !state.isAI; document.getElementById('btn-ai').classList.toggle('active'); }
     function setCamScale(v) { document.documentElement.style.setProperty('--cam-scale', v); }
     function setCercScale(v) { document.documentElement.style.setProperty('--cerc-scale', v); }
     function updateText(v) { document.getElementById('draggable-text').innerText = v; }
-    function updateColor(v) { state.mainColor = v; document.documentElement.style.setProperty('--main-color', v); }
     function toggleCamMode() {
         state.isCamInCircle = !state.isCamInCircle;
-        const w = document.getElementById('webcam-layer');
-        const btn = document.getElementById('btn-mode');
-        if(state.isCamInCircle) {
-            w.classList.add('in-circle');
-            document.getElementById('inner-circle').appendChild(w);
-            btn.innerText = "MOD: CERC";
-        } else {
-            w.classList.remove('in-circle');
-            document.getElementById('viewport').appendChild(w);
-            btn.innerText = "MOD: NORMAL";
-        }
+        const w = document.getElementById('webcam-layer'), btn = document.getElementById('btn-mode');
+        if(state.isCamInCircle) { w.classList.add('in-circle'); document.getElementById('inner-circle').appendChild(w); btn.innerText = "MOD: CERC"; } 
+        else { w.classList.remove('in-circle'); document.getElementById('viewport').appendChild(w); btn.innerText = "MOD: NORMAL"; }
     }
-    function toggleInnerImage() {
-        state.innerImageVisible = !state.innerImageVisible;
-        document.getElementById('inner-img').style.display = state.innerImageVisible ? 'block' : 'none';
-        document.getElementById('btn-ic').classList.toggle('active');
-    }
-    function loadInnerImage(i) {
-        if(i.files[0]) {
-            document.getElementById('inner-img').src = URL.createObjectURL(i.files[0]);
-            if(!state.innerImageVisible) toggleInnerImage();
-        }
-    }
+    function toggleInnerImage() { state.innerImageVisible = !state.innerImageVisible; document.getElementById('inner-img').style.display = state.innerImageVisible ? 'block' : 'none'; document.getElementById('btn-ic').classList.toggle('active'); }
+    function loadInnerImage(i) { if(i.files[0]) { document.getElementById('inner-img').src = URL.createObjectURL(i.files[0]); if(!state.innerImageVisible) toggleInnerImage(); } }
 </script>
 </body>
 </html>
