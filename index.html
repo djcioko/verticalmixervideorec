@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RI-STUDIO | EFFECTS EDITION</title>
+    <title>RI-STUDIO | FULL CONTROL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
     <style>
-        :root { --main-color: #ffaa00; --trans-time: 1.2s; --text-scale: 1; --cam-scale: 1; }
+        :root { --main-color: #ffaa00; --trans-time: 1.2s; --text-scale: 1; --cam-scale: 1; --logo-scale: 1; }
         body { background: #080808; color: white; font-family: sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
 
-        /* VIEWPORT-UL PENTRU RECORD */
         #phone-container {
             position: relative;
             width: 320px; height: 568px; 
@@ -21,29 +20,28 @@
 
         #viewport { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; }
 
-        /* --- EFECTE TRANZITIE & ZOOM --- */
+        /* EFECTE SLIDESHOW */
         .slide-layer { 
             position: absolute; inset: 0; width: 100%; height: 100%; 
             object-fit: cover; opacity: 0; 
             transition: opacity var(--trans-time) ease-in-out; 
             transform: scale(1.1);
         }
-        /* Efectul Ken Burns care se activează pe poza vizibilă */
         .slide-active { 
             opacity: 1; 
             animation: kenBurnsEffect 12s infinite alternate ease-in-out; 
         }
-        
-        @keyframes kenBurnsEffect { 
-            from { transform: scale(1); } 
-            to { transform: scale(1.18); } 
-        }
+        @keyframes kenBurnsEffect { from { transform: scale(1); } to { transform: scale(1.18); } }
 
-        /* CAMERA & LOGO */
+        /* CAMERA, LOGO, TEXT */
         #webcam-layer { position: absolute; width: 140px; height: 105px; z-index: 20; cursor: grab; transform: scale(var(--cam-scale)); touch-action: none; }
         #ai-canvas { width: 100%; height: 100%; object-fit: cover; }
         
-        #circle-group { position: absolute; width: 200px; height: 200px; z-index: 15; cursor: grab; display: flex; align-items: center; justify-content: center; }
+        #circle-group { 
+            position: absolute; width: 200px; height: 200px; z-index: 15; cursor: grab; 
+            display: flex; align-items: center; justify-content: center;
+            transform: scale(var(--logo-scale));
+        }
         #inner-circle { width: 110px; height: 110px; border: 3px solid var(--main-color); border-radius: 50%; z-index: 16; background: rgba(0,0,0,0.4); overflow: hidden; }
         
         #draggable-text { 
@@ -55,7 +53,7 @@
         /* UI PANEL */
         .ui-panel { margin-left: 20px; display: flex; flex-direction: column; gap: 8px; width: 310px; background: #111; padding: 15px; border: 1px solid #333; border-radius: 8px; max-height: 95vh; overflow-y: auto; }
         .cube { background: #1a1a1a; padding: 10px; border: 1px solid #333; border-radius: 4px; }
-        h4 { font-size: 10px; color: var(--main-color); text-transform: uppercase; margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #222; letter-spacing: 1px; }
+        h4 { font-size: 10px; color: var(--main-color); text-transform: uppercase; margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #222; }
         button { width: 100%; background: #333; color: white; padding: 7px; font-size: 11px; font-weight: bold; margin-bottom: 4px; border-radius: 4px; }
         button.active { background: #059669 !important; }
         input[type="range"] { width: 100%; accent-color: var(--main-color); cursor: pointer; }
@@ -80,42 +78,39 @@
 
     <div class="ui-panel">
         <div class="cube">
-            <h4>1. EFECTE SLIDESHOW</h4>
-            <button onclick="document.getElementById('file-slides').click()">UPLOAD FOTO PROIECT</button>
+            <h4>1. SLIDESHOW & EFECTE</h4>
+            <button onclick="document.getElementById('file-slides').click()">UPLOAD POZE</button>
             <input type="file" id="file-slides" multiple accept="image/*" style="display:none" onchange="loadSlides(this)">
-            
             <div class="label-row"><span>TIMP POZĂ:</span><span id="val-slide">4</span>s</div>
             <input type="range" min="1" max="15" value="4" oninput="updateSlideTime(this.value)">
-
-            <div class="label-row"><span>DURATĂ TRANZIȚIE:</span><span id="val-trans">1.2</span>s</div>
+            <div class="label-row"><span>DURATĂ FADE:</span><span id="val-trans">1.2</span>s</div>
             <input type="range" min="0.1" max="4" step="0.1" value="1.2" oninput="updateTransTime(this.value)">
-            
-            <button id="btn-slide" onclick="toggleSlideshow()" style="margin-top:5px; border: 1px solid #555;">START EFECTE</button>
+            <button id="btn-slide" onclick="toggleSlideshow()" style="margin-top:5px;">START SLIDESHOW</button>
         </div>
 
         <div class="cube">
-            <h4>2. CAMERĂ DEVICE</h4>
-            <button onclick="initCam()">ACTIVEAZĂ CAMERA</button>
-            <button id="btn-ai" onclick="toggleAI()">AI CUT (TRANSPARENT)</button>
-            <div class="label-row"><span>SCALARE CAMERĂ:</span></div>
+            <h4>2. CAMERĂ & LOGO</h4>
+            <button onclick="initCam()">START CAMERA</button>
+            <button id="btn-ai" onclick="toggleAI()">AI CUT: OFF</button>
+            <div class="label-row"><span>MĂRIME CAMERĂ:</span></div>
             <input type="range" min="0.5" max="3" step="0.1" value="1" oninput="setCamScale(this.value)">
+            
+            <button onclick="document.getElementById('file-inner').click()" style="margin-top:8px;">UPLOAD LOGO CERC</button>
+            <input type="file" id="file-inner" style="display:none" onchange="loadInnerImage(this)">
+            <div class="label-row"><span>MĂRIME LOGO:</span></div>
+            <input type="range" min="0.3" max="3" step="0.1" value="1" oninput="setLogoScale(this.value)">
         </div>
 
         <div class="cube">
-            <h4>3. TEXT & BRANDING</h4>
+            <h4>3. TEXT BRANDING</h4>
             <input type="text" style="width:100%; background:#000; border:1px solid #333; color:white; padding:5px; font-size:11px;" placeholder="Site-ul tău..." oninput="document.getElementById('draggable-text').innerText=this.value">
-            
             <div class="label-row"><span>MĂRIME TEXT:</span></div>
             <input type="range" min="0.5" max="4" step="0.1" value="1" oninput="setTextScale(this.value)">
-            
-            <div class="label-row"><span>CULOARE SELECTIE:</span></div>
+            <div class="label-row"><span>CULOARE TEXT:</span></div>
             <input type="color" value="#ffffff" style="width:100%; height:20px; background:none; border:none; cursor:pointer;" oninput="document.getElementById('draggable-text').style.color=this.value">
-            
-            <button onclick="document.getElementById('file-inner').click()" style="margin-top:8px;">SCHIMBĂ LOGO CERC</button>
-            <input type="file" id="file-inner" style="display:none" onchange="loadInnerImage(this)">
         </div>
         
-        <button onclick="location.reload()" style="background:#550000; font-size:9px; opacity: 0.6;">RESET STUDIO</button>
+        <button onclick="location.reload()" style="background:#440000; font-size:9px;">RESETARE STUDIO</button>
     </div>
 
     <video id="hidden-video" style="display:none" autoplay muted playsinline></video>
@@ -124,6 +119,11 @@
     let state = { isAI: false, isSlideshowActive: false, slideTime: 4 };
     let slideshow = { files: [], idx: 0, int: null, currentLayer: 1 };
     let ai = { selfie: null, stream: null };
+
+    // FUNCTII DE SCALARE
+    function setTextScale(v) { document.getElementById('draggable-text').style.transform = `scale(${v})`; }
+    function setCamScale(v) { document.getElementById('webcam-layer').style.transform = `scale(${v})`; }
+    function setLogoScale(v) { document.getElementById('circle-group').style.transform = `scale(${v})`; }
 
     function updateSlideTime(val) {
         state.slideTime = val;
@@ -134,14 +134,12 @@
         document.getElementById('val-trans').innerText = val;
         document.documentElement.style.setProperty('--trans-time', val + 's');
     }
-    function setTextScale(v) { document.getElementById('draggable-text').style.transform = `scale(${v})`; }
-    function setCamScale(v) { document.getElementById('webcam-layer').style.transform = `scale(${v})`; }
 
+    // LOGICA SLIDESHOW
     function loadSlides(i) {
         slideshow.files = Array.from(i.files).map(f => URL.createObjectURL(f));
         if(slideshow.files.length > 0) document.getElementById('slide-1').src = slideshow.files[0];
     }
-
     function changeSlide() {
         if (!state.isSlideshowActive || slideshow.files.length === 0) return;
         slideshow.idx = (slideshow.idx + 1) % slideshow.files.length;
@@ -152,30 +150,28 @@
         newLayer.classList.add('slide-active');
         oldLayer.classList.remove('slide-active');
     }
-
     function toggleSlideshow() {
         state.isSlideshowActive = !state.isSlideshowActive;
         const btn = document.getElementById('btn-slide');
-        btn.innerText = state.isSlideshowActive ? "STOP EFECTE" : "START EFECTE";
+        btn.innerText = state.isSlideshowActive ? "STOP SLIDESHOW" : "START SLIDESHOW";
         btn.classList.toggle('active', state.isSlideshowActive);
         if(state.isSlideshowActive) restartSlideshow();
         else clearInterval(slideshow.int);
     }
-
     function restartSlideshow() {
         clearInterval(slideshow.int);
         slideshow.int = setInterval(changeSlide, state.slideTime * 1000);
     }
 
+    // CAMERA & AI
     async function initCam() {
         try {
             ai.stream = await navigator.mediaDevices.getUserMedia({ video: true });
             document.getElementById('hidden-video').srcObject = ai.stream;
             document.getElementById('webcam-layer').style.display = 'block';
             setupAI();
-        } catch(e) { alert("Cameră inaccesibilă."); }
+        } catch(e) { alert("Cameră indisponibilă."); }
     }
-
     function setupAI() {
         ai.selfie = new SelfieSegmentation({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`});
         ai.selfie.setOptions({ modelSelection: 1 });
@@ -193,8 +189,9 @@
         const predict = async () => { await ai.selfie.send({image: document.getElementById('hidden-video')}); requestAnimationFrame(predict); };
         predict();
     }
-
     function toggleAI() { state.isAI = !state.isAI; document.getElementById('btn-ai').classList.toggle('active'); }
+
+    // BRANDING
     function loadInnerImage(i) { if(i.files[0]) { document.getElementById('inner-img').src = URL.createObjectURL(i.files[0]); document.getElementById('inner-img').style.display = 'block'; } }
 
     function makeDraggable(el) {
