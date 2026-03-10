@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RI-STUDIO | FULL CONTROL</title>
+    <title>RI-STUDIO | ULTIMATE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
     <style>
-        :root { --main-color: #ffaa00; --trans-time: 1.2s; --text-scale: 1; --cam-scale: 1; --logo-scale: 1; }
+        :root { --main-color: #ffaa00; --trans-time: 1.2s; }
         body { background: #080808; color: white; font-family: sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
 
         #phone-container {
@@ -15,57 +15,40 @@
             width: 320px; height: 568px; 
             background: #000; border: 2px solid #333; 
             overflow: hidden; flex-shrink: 0;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
         }
 
         #viewport { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; }
 
-        /* EFECTE SLIDESHOW */
-        .slide-layer { 
-            position: absolute; inset: 0; width: 100%; height: 100%; 
-            object-fit: cover; opacity: 0; 
-            transition: opacity var(--trans-time) ease-in-out; 
-            transform: scale(1.1);
-        }
-        .slide-active { 
-            opacity: 1; 
-            animation: kenBurnsEffect 12s infinite alternate ease-in-out; 
-        }
+        /* FUNDALURI */
+        #bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 1; }
+        .slide-layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity var(--trans-time) ease-in-out; transform: scale(1.1); z-index: 2; }
+        .slide-active { opacity: 1; animation: kenBurnsEffect 12s infinite alternate ease-in-out; }
         @keyframes kenBurnsEffect { from { transform: scale(1); } to { transform: scale(1.18); } }
 
-        /* CAMERA, LOGO, TEXT */
-        #webcam-layer { position: absolute; width: 140px; height: 105px; z-index: 20; cursor: grab; transform: scale(var(--cam-scale)); touch-action: none; }
+        /* ELEMENTE MOBILE */
+        #webcam-layer { position: absolute; width: 140px; height: 105px; z-index: 20; cursor: grab; touch-action: none; }
         #ai-canvas { width: 100%; height: 100%; object-fit: cover; }
-        
-        #circle-group { 
-            position: absolute; width: 200px; height: 200px; z-index: 15; cursor: grab; 
-            display: flex; align-items: center; justify-content: center;
-            transform: scale(var(--logo-scale));
-        }
+        #circle-group { position: absolute; width: 200px; height: 200px; z-index: 15; cursor: grab; display: flex; align-items: center; justify-content: center; }
         #inner-circle { width: 110px; height: 110px; border: 3px solid var(--main-color); border-radius: 50%; z-index: 16; background: rgba(0,0,0,0.4); overflow: hidden; }
-        
-        #draggable-text { 
-            position: absolute; z-index: 30; cursor: grab; font-weight: 900; 
-            color: white; text-shadow: 2px 2px 8px #000; white-space: nowrap; 
-            padding: 5px; transform: scale(var(--text-scale));
-        }
+        #draggable-text { position: absolute; z-index: 30; cursor: grab; font-weight: 900; color: white; text-shadow: 2px 2px 8px #000; white-space: nowrap; padding: 5px; }
 
-        /* UI PANEL */
+        /* UI */
         .ui-panel { margin-left: 20px; display: flex; flex-direction: column; gap: 8px; width: 310px; background: #111; padding: 15px; border: 1px solid #333; border-radius: 8px; max-height: 95vh; overflow-y: auto; }
         .cube { background: #1a1a1a; padding: 10px; border: 1px solid #333; border-radius: 4px; }
         h4 { font-size: 10px; color: var(--main-color); text-transform: uppercase; margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #222; }
-        button { width: 100%; background: #333; color: white; padding: 7px; font-size: 11px; font-weight: bold; margin-bottom: 4px; border-radius: 4px; }
+        button { width: 100%; background: #333; color: white; padding: 6px; font-size: 11px; font-weight: bold; margin-bottom: 4px; border-radius: 4px; }
         button.active { background: #059669 !important; }
-        input[type="range"] { width: 100%; accent-color: var(--main-color); cursor: pointer; }
-        .label-row { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 5px; }
+        input[type="range"] { width: 100%; accent-color: var(--main-color); cursor: pointer; margin-top: 4px; }
+        .label-row { display: flex; justify-content: space-between; font-size: 10px; color: #888; margin-top: 4px; }
     </style>
 </head>
 <body>
 
     <div id="phone-container">
         <div id="viewport">
+            <video id="bg-video" loop playsinline muted></video>
             <div id="slide-container">
-                <img id="slide-1" class="slide-layer slide-active">
+                <img id="slide-1" class="slide-layer">
                 <img id="slide-2" class="slide-layer">
             </div>
             <div id="webcam-layer" style="top:20px; left:20px; display:none;"><canvas id="ai-canvas"></canvas></div>
@@ -78,67 +61,91 @@
 
     <div class="ui-panel">
         <div class="cube">
-            <h4>1. SLIDESHOW & EFECTE</h4>
+            <h4>1. VIDEO FUNDAL</h4>
+            <button onclick="document.getElementById('file-video').click()">ÎNCARCĂ VIDEO</button>
+            <input type="file" id="file-video" accept="video/*" style="display:none" onchange="loadVideo(this)">
+            <button id="btn-vid-toggle" onclick="toggleVideo()">VIDEO: OFF</button>
+            <button id="btn-vid-mute" onclick="toggleMute()">🔇 MUTE</button>
+        </div>
+
+        <div class="cube">
+            <h4>2. SLIDESHOW POZE</h4>
             <button onclick="document.getElementById('file-slides').click()">UPLOAD POZE</button>
             <input type="file" id="file-slides" multiple accept="image/*" style="display:none" onchange="loadSlides(this)">
             <div class="label-row"><span>TIMP POZĂ:</span><span id="val-slide">4</span>s</div>
             <input type="range" min="1" max="15" value="4" oninput="updateSlideTime(this.value)">
-            <div class="label-row"><span>DURATĂ FADE:</span><span id="val-trans">1.2</span>s</div>
-            <input type="range" min="0.1" max="4" step="0.1" value="1.2" oninput="updateTransTime(this.value)">
-            <button id="btn-slide" onclick="toggleSlideshow()" style="margin-top:5px;">START SLIDESHOW</button>
+            <button id="btn-slide" onclick="toggleSlideshow()">START SLIDESHOW</button>
         </div>
 
         <div class="cube">
-            <h4>2. CAMERĂ & LOGO</h4>
+            <h4>3. CAMERĂ & LOGO</h4>
             <button onclick="initCam()">START CAMERA</button>
             <button id="btn-ai" onclick="toggleAI()">AI CUT: OFF</button>
             <div class="label-row"><span>MĂRIME CAMERĂ:</span></div>
             <input type="range" min="0.5" max="3" step="0.1" value="1" oninput="setCamScale(this.value)">
-            
-            <button onclick="document.getElementById('file-inner').click()" style="margin-top:8px;">UPLOAD LOGO CERC</button>
+            <button onclick="document.getElementById('file-inner').click()" class="mt-2">LOGO CERC</button>
             <input type="file" id="file-inner" style="display:none" onchange="loadInnerImage(this)">
             <div class="label-row"><span>MĂRIME LOGO:</span></div>
             <input type="range" min="0.3" max="3" step="0.1" value="1" oninput="setLogoScale(this.value)">
         </div>
 
         <div class="cube">
-            <h4>3. TEXT BRANDING</h4>
-            <input type="text" style="width:100%; background:#000; border:1px solid #333; color:white; padding:5px; font-size:11px;" placeholder="Site-ul tău..." oninput="document.getElementById('draggable-text').innerText=this.value">
+            <h4>4. TEXT BRANDING</h4>
+            <input type="text" class="w-full bg-black border border-gray-700 p-1 text-[11px]" placeholder="Site..." oninput="document.getElementById('draggable-text').innerText=this.value">
             <div class="label-row"><span>MĂRIME TEXT:</span></div>
             <input type="range" min="0.5" max="4" step="0.1" value="1" oninput="setTextScale(this.value)">
             <div class="label-row"><span>CULOARE TEXT:</span></div>
-            <input type="color" value="#ffffff" style="width:100%; height:20px; background:none; border:none; cursor:pointer;" oninput="document.getElementById('draggable-text').style.color=this.value">
+            <input type="color" value="#ffffff" class="w-full h-5 mt-1 border-none cursor-pointer" oninput="document.getElementById('draggable-text').style.color=this.value">
         </div>
         
-        <button onclick="location.reload()" style="background:#440000; font-size:9px;">RESETARE STUDIO</button>
+        <button onclick="location.reload()" class="bg-red-900 text-[9px] opacity-60">RESET TOT</button>
     </div>
 
     <video id="hidden-video" style="display:none" autoplay muted playsinline></video>
 
 <script>
-    let state = { isAI: false, isSlideshowActive: false, slideTime: 4 };
+    let state = { isAI: false, isSlideshowActive: false, isVideoActive: false, slideTime: 4 };
     let slideshow = { files: [], idx: 0, int: null, currentLayer: 1 };
     let ai = { selfie: null, stream: null };
 
-    // FUNCTII DE SCALARE
+    // VIDEO
+    function loadVideo(i) {
+        if(i.files[0]) {
+            const vid = document.getElementById('bg-video');
+            vid.src = URL.createObjectURL(i.files[0]);
+            state.isVideoActive = true;
+            vid.style.display = 'block';
+            vid.play();
+            document.getElementById('btn-vid-toggle').innerText = "VIDEO: ON";
+            document.getElementById('btn-vid-toggle').classList.add('active');
+            if(state.isSlideshowActive) toggleSlideshow();
+        }
+    }
+    function toggleVideo() {
+        const vid = document.getElementById('bg-video');
+        state.isVideoActive = !state.isVideoActive;
+        vid.style.display = state.isVideoActive ? 'block' : 'none';
+        if(state.isVideoActive) { vid.play(); if(state.isSlideshowActive) toggleSlideshow(); }
+        else vid.pause();
+        document.getElementById('btn-vid-toggle').innerText = state.isVideoActive ? "VIDEO: ON" : "VIDEO: OFF";
+        document.getElementById('btn-vid-toggle').classList.toggle('active', state.isVideoActive);
+    }
+    function toggleMute() {
+        const vid = document.getElementById('bg-video');
+        vid.muted = !vid.muted;
+        document.getElementById('btn-vid-mute').innerText = vid.muted ? "🔇 MUTE" : "🔊 SUNET ON";
+    }
+
+    // SCALARI
     function setTextScale(v) { document.getElementById('draggable-text').style.transform = `scale(${v})`; }
     function setCamScale(v) { document.getElementById('webcam-layer').style.transform = `scale(${v})`; }
     function setLogoScale(v) { document.getElementById('circle-group').style.transform = `scale(${v})`; }
 
-    function updateSlideTime(val) {
-        state.slideTime = val;
-        document.getElementById('val-slide').innerText = val;
-        if (state.isSlideshowActive) restartSlideshow();
-    }
-    function updateTransTime(val) {
-        document.getElementById('val-trans').innerText = val;
-        document.documentElement.style.setProperty('--trans-time', val + 's');
-    }
-
-    // LOGICA SLIDESHOW
+    // SLIDESHOW
+    function updateSlideTime(v) { state.slideTime = v; document.getElementById('val-slide').innerText = v; if (state.isSlideshowActive) restartSlideshow(); }
     function loadSlides(i) {
         slideshow.files = Array.from(i.files).map(f => URL.createObjectURL(f));
-        if(slideshow.files.length > 0) document.getElementById('slide-1').src = slideshow.files[0];
+        if(slideshow.files.length > 0) { document.getElementById('slide-1').src = slideshow.files[0]; document.getElementById('slide-1').classList.add('slide-active'); }
     }
     function changeSlide() {
         if (!state.isSlideshowActive || slideshow.files.length === 0) return;
@@ -152,25 +159,20 @@
     }
     function toggleSlideshow() {
         state.isSlideshowActive = !state.isSlideshowActive;
-        const btn = document.getElementById('btn-slide');
-        btn.innerText = state.isSlideshowActive ? "STOP SLIDESHOW" : "START SLIDESHOW";
-        btn.classList.toggle('active', state.isSlideshowActive);
+        if(state.isSlideshowActive && state.isVideoActive) toggleVideo();
+        document.getElementById('btn-slide').classList.toggle('active', state.isSlideshowActive);
+        document.getElementById('btn-slide').innerText = state.isSlideshowActive ? "STOP SLIDESHOW" : "START SLIDESHOW";
         if(state.isSlideshowActive) restartSlideshow();
-        else clearInterval(slideshow.int);
+        else { clearInterval(slideshow.int); document.querySelectorAll('.slide-layer').forEach(l => l.classList.remove('slide-active')); }
     }
-    function restartSlideshow() {
-        clearInterval(slideshow.int);
-        slideshow.int = setInterval(changeSlide, state.slideTime * 1000);
-    }
+    function restartSlideshow() { clearInterval(slideshow.int); changeSlide(); slideshow.int = setInterval(changeSlide, state.slideTime * 1000); }
 
     // CAMERA & AI
     async function initCam() {
-        try {
-            ai.stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            document.getElementById('hidden-video').srcObject = ai.stream;
-            document.getElementById('webcam-layer').style.display = 'block';
-            setupAI();
-        } catch(e) { alert("Cameră indisponibilă."); }
+        ai.stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        document.getElementById('hidden-video').srcObject = ai.stream;
+        document.getElementById('webcam-layer').style.display = 'block';
+        setupAI();
     }
     function setupAI() {
         ai.selfie = new SelfieSegmentation({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`});
@@ -179,19 +181,13 @@
             const c = document.getElementById('ai-canvas'), ctx = c.getContext('2d');
             c.width = res.image.width; c.height = res.image.height;
             ctx.clearRect(0,0,c.width,c.height);
-            if(state.isAI) {
-                ctx.globalCompositeOperation = 'copy';
-                ctx.drawImage(res.segmentationMask, 0, 0, c.width, c.height);
-                ctx.globalCompositeOperation = 'source-in';
-            }
+            if(state.isAI) { ctx.globalCompositeOperation = 'copy'; ctx.drawImage(res.segmentationMask, 0, 0, c.width, c.height); ctx.globalCompositeOperation = 'source-in'; }
             ctx.drawImage(res.image, 0, 0, c.width, c.height);
         });
         const predict = async () => { await ai.selfie.send({image: document.getElementById('hidden-video')}); requestAnimationFrame(predict); };
         predict();
     }
     function toggleAI() { state.isAI = !state.isAI; document.getElementById('btn-ai').classList.toggle('active'); }
-
-    // BRANDING
     function loadInnerImage(i) { if(i.files[0]) { document.getElementById('inner-img').src = URL.createObjectURL(i.files[0]); document.getElementById('inner-img').style.display = 'block'; } }
 
     function makeDraggable(el) {
