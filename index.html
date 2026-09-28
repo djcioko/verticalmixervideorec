@@ -164,6 +164,8 @@
                 <input type="file" id="file-video" accept="video/*" style="display:none" onchange="loadVideo(this)">
                 <button id="btn-vid-toggle" onclick="toggleVideo()">VIDEO: OFF</button>
                 <button id="btn-vid-mute" onclick="toggleMute()">🔇 MUTE</button>
+                <!-- Timer sub video -->
+                <div class="label-row" style="margin-top: 6px;"><span>TIMP VIDEO:</span><span id="video-timer">00:00 / 00:00</span></div>
             </div>
 
             <div class="cube">
@@ -193,12 +195,17 @@
             </div>
 
             <div class="cube">
-                <h4>4. TEXT BRANDING</h4>
+                <h4>4. TEXT BRANDING & MICROFON</h4>
                 <input type="text" id="input-text-val" class="w-full bg-black border border-gray-700 p-2 text-[11px] rounded text-white" placeholder="Site..." oninput="updateTextContent(this.value)">
                 <div class="label-row"><span>MĂRIME TEXT:</span></div>
                 <input type="range" id="range-text-scale" min="0.5" max="4" step="0.1" value="1" oninput="setTextScale(this.value)">
                 <div class="label-row"><span>CULOARE TEXT:</span></div>
                 <input type="color" id="input-text-color" value="#ffffff" class="w-full h-7 mt-1 border-none cursor-pointer rounded bg-transparent" oninput="setTextColor(this.value)">
+                
+                <!-- Buton Sursă Microfon ON / OFF -->
+                <div style="margin-top: 8px;">
+                    <button id="btn-mic-toggle" onclick="toggleMicSource()" style="background: #059669;">MICROFON: ON</button>
+                </div>
             </div>
             
             <button onclick="resetAll()" class="bg-red-900 text-[10px] opacity-80 py-2">RESET TOT</button>
@@ -219,6 +226,7 @@
         textScale: 1,
         textColor: '#ffffff',
         textContent: 'WWW.RIBUILDING.RO',
+        isMicActive: true,
         positions: {
             'webcam-layer': {top: '20px', left: '20px'},
             'circle-group': {top: '110px', left: '50px'},
@@ -232,6 +240,22 @@
     let recordedChunks = [];
     let isRecording = false;
     let recordCanvas, recordCtx, recordInterval;
+
+    // Formatare timp pentru timer (secunde -> mm:ss)
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return "00:00";
+        let m = Math.floor(seconds / 60);
+        let s = Math.floor(seconds % 60);
+        return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+    }
+
+    // Actualizare timer video fundal
+    const videoEl = document.getElementById('bg-video');
+    videoEl.addEventListener('timeupdate', () => {
+        const current = formatTime(videoEl.currentTime);
+        const duration = formatTime(videoEl.duration);
+        document.getElementById('video-timer').innerText = `${current} / ${duration}`;
+    });
 
     // --- SALVARE ȘI ÎNCĂRCARE DIN INDEXEDDB & LOCALSTORAGE ---
     const DB_NAME = "RIStudioDB", STORE_NAME = "filesStore";
@@ -277,7 +301,6 @@
             } catch(e) {}
         }
 
-        // Aplicare setări vizuale pe interfață
         document.getElementById('val-slide').innerText = state.slideTime;
         document.getElementById('range-slide').value = state.slideTime;
         document.getElementById('range-cam-scale').value = state.camScale;
@@ -291,9 +314,18 @@
         textEl.style.color = state.textColor;
         textEl.style.transform = `scale(${state.textScale})`;
 
+        // Stare microfon
+        const micBtn = document.getElementById('btn-mic-toggle');
+        if (state.isMicActive) {
+            micBtn.innerText = "MICROFON: ON";
+            micBtn.classList.add('active');
+        } else {
+            micBtn.innerText = "MICROFON: OFF";
+            micBtn.classList.remove('active');
+        }
+
         updateTransforms();
 
-        // Poziții elemente dragabile
         ['webcam-layer', 'circle-group', 'draggable-text'].forEach(id => {
             if (state.positions && state.positions[id]) {
                 const el = document.getElementById(id);
@@ -303,14 +335,12 @@
             }
         });
 
-        // Încărcare fișiere salvate
         const savedVideo = await getFileFromIDB('bg_video');
         if (savedVideo) {
-            const vid = document.getElementById('bg-video');
-            vid.src = URL.createObjectURL(savedVideo);
+            videoEl.src = URL.createObjectURL(savedVideo);
             state.isVideoActive = true;
-            vid.style.display = 'block';
-            vid.play().catch(e => console.log("Auto-play blocked:", e));
+            videoEl.style.display = 'block';
+            videoEl.play().catch(e => console.log("Auto-play blocked:", e));
             document.getElementById('btn-vid-toggle').innerText = "VIDEO: ON";
             document.getElementById('btn-vid-toggle').classList.add('active');
         }
@@ -334,11 +364,10 @@
         if(i.files[0]) {
             const file = i.files[0];
             await saveFileToIDB('bg_video', file);
-            const vid = document.getElementById('bg-video');
-            vid.src = URL.createObjectURL(file);
+            videoEl.src = URL.createObjectURL(file);
             state.isVideoActive = true;
-            vid.style.display = 'block';
-            vid.play().catch(e => console.log("Auto-play blocked:", e));
+            videoEl.style.display = 'block';
+            videoEl.play().catch(e => console.log("Auto-play blocked:", e));
             document.getElementById('btn-vid-toggle').innerText = "VIDEO: ON";
             document.getElementById('btn-vid-toggle').classList.add('active');
             if(state.isSlideshowActive) toggleSlideshow();
@@ -347,20 +376,26 @@
     }
 
     function toggleVideo() {
-        const vid = document.getElementById('bg-video');
         state.isVideoActive = !state.isVideoActive;
-        vid.style.display = state.isVideoActive ? 'block' : 'none';
-        if(state.isVideoActive) { vid.play(); if(state.isSlideshowActive) toggleSlideshow(); }
-        else vid.pause();
+        videoEl.style.display = state.isVideoActive ? 'block' : 'none';
+        if(state.isVideoActive) { videoEl.play(); if(state.isSlideshowActive) toggleSlideshow(); }
+        else videoEl.pause();
         document.getElementById('btn-vid-toggle').innerText = state.isVideoActive ? "VIDEO: ON" : "VIDEO: OFF";
         document.getElementById('btn-vid-toggle').classList.toggle('active', state.isVideoActive);
         saveState();
     }
 
     function toggleMute() {
-        const vid = document.getElementById('bg-video');
-        vid.muted = !vid.muted;
-        document.getElementById('btn-vid-mute').innerText = vid.muted ? "🔇 MUTE" : "🔊 SUNET ON";
+        videoEl.muted = !videoEl.muted;
+        document.getElementById('btn-vid-mute').innerText = videoEl.muted ? "🔇 MUTE" : "🔊 SUNET ON";
+    }
+
+    function toggleMicSource() {
+        state.isMicActive = !state.isMicActive;
+        const micBtn = document.getElementById('btn-mic-toggle');
+        micBtn.innerText = state.isMicActive ? "MICROFON: ON" : "MICROFON: OFF";
+        micBtn.classList.toggle('active', state.isMicActive);
+        saveState();
     }
 
     function setTextScale(v) { 
@@ -520,7 +555,6 @@
                 recordCanvas.height = 533;
                 recordCtx = recordCanvas.getContext('2d');
 
-                const videoEl = document.getElementById('bg-video');
                 const slide1 = document.getElementById('slide-1');
                 const slide2 = document.getElementById('slide-2');
                 const webcamLayer = document.getElementById('webcam-layer');
@@ -591,28 +625,39 @@
                 const canvasStream = recordCanvas.captureStream(30);
                 let combinedStream = canvasStream;
 
-                try {
-                    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                    const audioTracks = micStream.getAudioTracks();
-                    if (audioTracks.length > 0) combinedStream.addTrack(audioTracks[0]);
-                } catch (e) {}
+                // Adăugare microfon dacă este activat din buton
+                if (state.isMicActive) {
+                    try {
+                        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                        const audioTracks = micStream.getAudioTracks();
+                        if (audioTracks.length > 0) combinedStream.addTrack(audioTracks[0]);
+                    } catch (e) {
+                        console.log("Microfonul nu a putut fi accesat:", e);
+                    }
+                }
 
                 recordedChunks = [];
-                let options = { mimeType: 'video/webm;codecs=vp9,opus' };
+                // Setare prioritară pentru salvare în format MP4 (.mp4), cu fallback pe webm
+                let options = { mimeType: 'video/mp4' };
                 if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                    options = { mimeType: 'video/webm' };
-                    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = {};
+                    options = { mimeType: 'video/webm;codecs=vp9,opus' };
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                        options = { mimeType: 'video/webm' };
+                        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = {};
+                    }
                 }
 
                 mediaRecorder = new MediaRecorder(combinedStream, options);
                 mediaRecorder.ondataavailable = event => { if (event.data && event.data.size > 0) recordedChunks.push(event.data); };
                 mediaRecorder.onstop = () => {
-                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const mimeTypeUsed = mediaRecorder.mimeType || 'video/mp4';
+                    const fileExtension = mimeTypeUsed.includes('mp4') ? 'mp4' : 'webm';
+                    const blob = new Blob(recordedChunks, { type: mimeTypeUsed });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = url;
-                    a.download = `ri-studio-${Date.now()}.webm`;
+                    a.download = `ri-studio-${Date.now()}.${fileExtension}`;
                     document.body.appendChild(a);
                     a.click();
                     setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
@@ -659,7 +704,6 @@
         function dragEnd() {
             document.removeEventListener('pointermove', dragMove);
             document.removeEventListener('pointerup', dragEnd);
-            // Salvare poziție curentă
             state.positions[el.id] = {
                 top: el.style.top,
                 left: el.style.left,
