@@ -10,6 +10,12 @@
         :root { --main-color: #ffaa00; --trans-time: 1.2s; }
         body { background: #080808; color: white; font-family: sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
 
+        .app-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
         #phone-container {
             position: relative;
             width: 320px; height: 568px; 
@@ -32,34 +38,71 @@
         #inner-circle { width: 110px; height: 110px; border: 3px solid var(--main-color); border-radius: 50%; z-index: 16; background: rgba(0,0,0,0.4); overflow: hidden; }
         #draggable-text { position: absolute; z-index: 30; cursor: grab; font-weight: 900; color: white; text-shadow: 2px 2px 8px #000; white-space: nowrap; padding: 5px; }
 
+        /* HIDE CONTROLS SUB ECRAN */
+        .hide-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .hide-btn {
+            background: #222;
+            border: 1px solid #444;
+            color: #aaa;
+            font-size: 9px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .hide-btn.hidden-state {
+            background: #7f1d1d;
+            color: #fca5a5;
+            border-style: dashed;
+        }
+
         /* UI */
         .ui-panel { margin-left: 20px; display: flex; flex-direction: column; gap: 8px; width: 310px; background: #111; padding: 15px; border: 1px solid #333; border-radius: 8px; max-height: 95vh; overflow-y: auto; }
         .cube { background: #1a1a1a; padding: 10px; border: 1px solid #333; border-radius: 4px; }
         h4 { font-size: 10px; color: var(--main-color); text-transform: uppercase; margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #222; }
-        button { width: 100%; background: #333; color: white; padding: 6px; font-size: 11px; font-weight: bold; margin-bottom: 4px; border-radius: 4px; }
+        button { width: 100%; background: #333; color: white; padding: 6px; font-size: 11px; font-weight: bold; margin-bottom: 4px; border-radius: 4px; cursor: pointer; }
         button.active { background: #059669 !important; }
+        button.recording { background: #dc2626 !important; animation: pulseRec 1.5s infinite; }
+        @keyframes pulseRec { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         input[type="range"] { width: 100%; accent-color: var(--main-color); cursor: pointer; margin-top: 4px; }
         .label-row { display: flex; justify-content: space-between; font-size: 10px; color: #888; margin-top: 4px; }
     </style>
 </head>
 <body>
 
-    <div id="phone-container">
-        <div id="viewport">
-            <video id="bg-video" loop playsinline muted></video>
-            <div id="slide-container">
-                <img id="slide-1" class="slide-layer">
-                <img id="slide-2" class="slide-layer">
+    <div class="app-wrapper">
+        <div id="phone-container">
+            <div id="viewport">
+                <video id="bg-video" loop playsinline muted></video>
+                <div id="slide-container">
+                    <img id="slide-1" class="slide-layer">
+                    <img id="slide-2" class="slide-layer">
+                </div>
+                <div id="webcam-layer" style="top:20px; left:20px; display:none;"><canvas id="ai-canvas"></canvas></div>
+                <div id="circle-group" style="top:120px; left:60px;">
+                    <div id="inner-circle"><img id="inner-img" style="width:100%; height:100%; object-fit:cover; display:none; border-radius: 50%;"></div>
+                </div>
+                <div id="draggable-text" style="bottom:60px; left:40px;">WWW.RIBUILDING.RO</div>
             </div>
-            <div id="webcam-layer" style="top:20px; left:20px; display:none;"><canvas id="ai-canvas"></canvas></div>
-            <div id="circle-group" style="top:120px; left:60px;">
-                <div id="inner-circle"><img id="inner-img" style="width:100%; height:100%; object-fit:cover; display:none; border-radius: 50%;"></div>
-            </div>
-            <div id="draggable-text" style="bottom:60px; left:40px;">WWW.RIBUILDING.RO</div>
+        </div>
+        <!-- Butoane Hide ON/OFF sub ecran -->
+        <div class="hide-controls">
+            <button id="btn-hide-cam" class="hide-btn" onclick="toggleElement('webcam-layer', 'btn-hide-cam', 'CAMĂ')">HIDE CAMĂ: OFF</button>
+            <button id="btn-hide-logo" class="hide-btn" onclick="toggleElement('circle-group', 'btn-hide-logo', 'LOGO')">HIDE LOGO: OFF</button>
+            <button id="btn-hide-text" class="hide-btn" onclick="toggleElement('draggable-text', 'btn-hide-text', 'TEXT')">HIDE TEXT: OFF</button>
         </div>
     </div>
 
     <div class="ui-panel">
+        <div class="cube" style="border-color: #dc2626;">
+            <h4>5. ÎNREGISTRARE VIDEO (REC)</h4>
+            <button id="btn-rec" onclick="toggleRecording()">🔴 START RECORD</button>
+            <div class="label-row"><span>STATUS:</span><span id="rec-status">INACTIV</span></div>
+        </div>
+
         <div class="cube">
             <h4>1. VIDEO FUNDAL</h4>
             <button onclick="document.getElementById('file-video').click()">ÎNCARCĂ VIDEO</button>
@@ -108,6 +151,11 @@
     let slideshow = { files: [], idx: 0, int: null, currentLayer: 1 };
     let ai = { selfie: null, stream: null };
 
+    // RECORDING VARIABLES
+    let mediaRecorder;
+    let recordedChunks = [];
+    let isRecording = false;
+
     // VIDEO
     function loadVideo(i) {
         if(i.files[0]) {
@@ -140,6 +188,21 @@
     function setTextScale(v) { document.getElementById('draggable-text').style.transform = `scale(${v})`; }
     function setCamScale(v) { document.getElementById('webcam-layer').style.transform = `scale(${v})`; }
     function setLogoScale(v) { document.getElementById('circle-group').style.transform = `scale(${v})`; }
+
+    // HIDE ELEMENTS TOGGLE
+    function toggleElement(elementId, btnId, name) {
+        const el = document.getElementById(elementId);
+        const btn = document.getElementById(btnId);
+        if (el.style.display === 'none') {
+            el.style.display = (elementId === 'webcam-layer' && ai.stream) ? 'block' : (elementId !== 'webcam-layer' ? 'flex' : 'none');
+            btn.classList.remove('hidden-state');
+            btn.innerText = `HIDE ${name}: OFF`;
+        } else {
+            el.style.display = 'none';
+            btn.classList.add('hidden-state');
+            btn.innerText = `HIDE ${name}: ON`;
+        }
+    }
 
     // SLIDESHOW
     function updateSlideTime(v) { state.slideTime = v; document.getElementById('val-slide').innerText = v; if (state.isSlideshowActive) restartSlideshow(); }
@@ -189,6 +252,93 @@
     }
     function toggleAI() { state.isAI = !state.isAI; document.getElementById('btn-ai').classList.toggle('active'); }
     function loadInnerImage(i) { if(i.files[0]) { document.getElementById('inner-img').src = URL.createObjectURL(i.files[0]); document.getElementById('inner-img').style.display = 'block'; } }
+
+    // RECORDING FUNCTIONS (AUDIO DIN FIȘIER VIDEO + MICROFON + VIEWPORT)
+    async function toggleRecording() {
+        if (!isRecording) {
+            try {
+                // Capturăm viewport-ul telefonului
+                const phoneElement = document.getElementById('phone-container');
+                const canvasStream = phoneElement.captureStream ? phoneElement.captureStream(30) : null;
+                if (!canvasStream) {
+                    alert("Browserul tău nu suportă înregistrarea directă a acestui element.");
+                    return;
+                }
+
+                // Audio mixer pentru a combina sunetul video-ului de fundal și microfonul
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const destination = audioContext.createMediaStreamDestination();
+                let hasAudioSource = false;
+
+                // 1. Preluare sunet de la elementul video de fundal (dacă rulează și nu e pe mute)
+                const bgVideo = document.getElementById('bg-video');
+                if (state.isVideoActive && !bgVideo.muted && bgVideo.src) {
+                    try {
+                        const videoSource = audioContext.createMediaElementSource(bgVideo);
+                        videoSource.connect(destination);
+                        videoSource.connect(audioContext.destination); // Să se audă și în boxe în timp ce înregistrezi
+                        hasAudioSource = true;
+                    } catch (e) {
+                        console.log("Eroare la preluarea audio din video:", e);
+                    }
+                }
+
+                // 2. Preluare sunet de la Microfon
+                try {
+                    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                    const micSource = audioContext.createMediaStreamSource(micStream);
+                    micSource.connect(destination);
+                    hasAudioSource = true;
+                } catch (e) {
+                    console.log("Microfonul nu a putut fi accesat sau permisiunea a fost refuzată:", e);
+                }
+
+                // Combinăm fluxul video cu cel audio (dacă există surse audio)
+                const tracks = [...canvasStream.getVideoTracks()];
+                if (hasAudioSource) {
+                    tracks.push(...destination.stream.getAudioTracks());
+                }
+                const combinedStream = new MediaStream(tracks);
+
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9' });
+
+                mediaRecorder.ondataavailable = event => {
+                    if (event.data.size > 0) recordedChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `ri-studio-recording-${Date.now()}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                    }, 100);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                document.getElementById('btn-rec').innerText = "⏹️ STOP RECORD";
+                document.getElementById('btn-rec').classList.add('recording');
+                document.getElementById('rec-status').innerText = "ÎNREGISTRARE...";
+            } catch (err) {
+                console.error("Eroare la pornirea înregistrării:", err);
+                alert("A apărut o eroare la pornirea înregistrării.");
+            }
+        } else {
+            mediaRecorder.stop();
+            isRecording = false;
+            document.getElementById('btn-rec').innerText = "🔴 START RECORD";
+            document.getElementById('btn-rec').classList.remove('recording');
+            document.getElementById('rec-status').innerText = "SALVAT!";
+        }
+    }
 
     function makeDraggable(el) {
         let sx, sy;
