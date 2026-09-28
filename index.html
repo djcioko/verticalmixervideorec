@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RI-STUDIO | ULTIMATE</title>
+    <title>RI-STUDIO | ULTIMATE MOBILE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
     <style>
         :root { --main-color: #ffaa00; --trans-time: 1.2s; }
+        * { box-sizing: border-box; }
         body { 
             background: #080808; 
             color: white; 
@@ -19,7 +20,7 @@
             justify-content: flex-start; 
             min-height: 100vh; 
             overflow-y: auto; 
-            padding: 20px 0;
+            padding: 15px 10px;
         }
 
         .app-container {
@@ -27,20 +28,20 @@
             flex-direction: column;
             align-items: center;
             width: 100%;
-            max-width: 360px;
-            gap: 15px;
+            max-width: 340px;
+            gap: 12px;
         }
 
         #phone-container {
             position: relative;
-            width: 320px; 
-            height: 568px; 
+            width: 300px; 
+            height: 533px; 
             background: #000; 
             border: 2px solid #333; 
             overflow: hidden; 
             flex-shrink: 0;
             border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.9);
         }
 
         #viewport { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; }
@@ -51,18 +52,18 @@
         .slide-active { opacity: 1; animation: kenBurnsEffect 12s infinite alternate ease-in-out; }
         @keyframes kenBurnsEffect { from { transform: scale(1); } to { transform: scale(1.18); } }
 
-        /* ELEMENTE MOBILE */
-        #webcam-layer { position: absolute; width: 140px; height: 105px; z-index: 20; cursor: grab; touch-action: none; }
+        /* ELEMENTE MOBILE INTERACTIVE */
+        #webcam-layer { position: absolute; width: 130px; height: 100px; z-index: 20; cursor: grab; touch-action: none; }
         #ai-canvas { width: 100%; height: 100%; object-fit: cover; }
-        #circle-group { position: absolute; width: 200px; height: 200px; z-index: 15; cursor: grab; display: flex; align-items: center; justify-content: center; }
-        #inner-circle { width: 110px; height: 110px; border: 3px solid var(--main-color); border-radius: 50%; z-index: 16; background: rgba(0,0,0,0.4); overflow: hidden; }
-        #draggable-text { position: absolute; z-index: 30; cursor: grab; font-weight: 900; color: white; text-shadow: 2px 2px 8px #000; white-space: nowrap; padding: 5px; }
+        #circle-group { position: absolute; width: 180px; height: 180px; z-index: 15; cursor: grab; touch-action: none; display: flex; align-items: center; justify-content: center; }
+        #inner-circle { width: 100px; height: 100px; border: 3px solid var(--main-color); border-radius: 50%; z-index: 16; background: rgba(0,0,0,0.4); overflow: hidden; }
+        #draggable-text { position: absolute; z-index: 30; cursor: grab; touch-action: none; font-weight: 900; color: white; text-shadow: 2px 2px 8px #000; white-space: nowrap; padding: 5px; }
 
         /* HIDE CONTROLS SUB ECRAN */
         .hide-controls {
             display: flex;
-            gap: 8px;
-            width: 320px;
+            gap: 6px;
+            width: 300px;
             justify-content: space-between;
         }
         .hide-btn {
@@ -70,11 +71,12 @@
             background: #222;
             border: 1px solid #444;
             color: #aaa;
-            font-size: 9px;
-            padding: 6px 4px;
+            font-size: 8px;
+            padding: 6px 2px;
             border-radius: 4px;
             cursor: pointer;
             text-align: center;
+            font-weight: bold;
         }
         .hide-btn.hidden-state {
             background: #7f1d1d;
@@ -87,14 +89,14 @@
             display: flex; 
             flex-direction: column; 
             gap: 10px; 
-            width: 320px; 
+            width: 300px; 
             background: #111; 
-            padding: 15px; 
+            padding: 12px; 
             border: 1px solid #333; 
             border-radius: 8px; 
         }
         .cube { background: #1a1a1a; padding: 10px; border: 1px solid #333; border-radius: 4px; }
-        h4 { font-size: 10px; color: var(--main-color); text-transform: uppercase; margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #222; padding-bottom: 3px; }
+        h4 { font-size: 10px; color: var(--main-color); text-transform: uppercase; margin-bottom: 6px; font-weight: bold; border-bottom: 1px solid #222; padding-bottom: 3px; }
         button { width: 100%; background: #333; color: white; padding: 8px; font-size: 11px; font-weight: bold; margin-bottom: 4px; border-radius: 4px; cursor: pointer; border: none; }
         button.active { background: #059669 !important; }
         button.recording { background: #dc2626 !important; animation: pulseRec 1.5s infinite; }
@@ -115,21 +117,21 @@
                     <img id="slide-2" class="slide-layer">
                 </div>
                 <div id="webcam-layer" style="top:20px; left:20px; display:none;"><canvas id="ai-canvas"></canvas></div>
-                <div id="circle-group" style="top:120px; left:60px;">
+                <div id="circle-group" style="top:110px; left:50px;">
                     <div id="inner-circle"><img id="inner-img" style="width:100%; height:100%; object-fit:cover; display:none; border-radius: 50%;"></div>
                 </div>
-                <div id="draggable-text" style="bottom:60px; left:40px;">WWW.RIBUILDING.RO</div>
+                <div id="draggable-text" style="bottom:50px; left:30px;">WWW.RIBUILDING.RO</div>
             </div>
         </div>
 
         <!-- Butoane Hide ON/OFF sub ecran -->
         <div class="hide-controls">
-            <button id="btn-hide-cam" class="hide-btn" onclick="toggleElement('webcam-layer', 'btn-hide-cam', 'CAMĂ')">HIDE CAMĂ: OFF</button>
+            <button id="btn-hide-cam" class="hide-btn" onclick="toggleElement('webcam-layer', 'btn-hide-cam', 'CAMĂ')">HIDE CAM: OFF</button>
             <button id="btn-hide-logo" class="hide-btn" onclick="toggleElement('circle-group', 'btn-hide-logo', 'LOGO')">HIDE LOGO: OFF</button>
             <button id="btn-hide-text" class="hide-btn" onclick="toggleElement('draggable-text', 'btn-hide-text', 'TEXT')">HIDE TEXT: OFF</button>
         </div>
 
-        <!-- Panoul de Control (Așezat dedesubt) -->
+        <!-- Panoul de Control (Așezat dedesubt, vertical) -->
         <div class="ui-panel">
             <div class="cube" style="border-color: #dc2626;">
                 <h4>5. ÎNREGISTRARE VIDEO (REC)</h4>
@@ -168,7 +170,7 @@
 
             <div class="cube">
                 <h4>4. TEXT BRANDING</h4>
-                <input type="text" class="w-full bg-black border border-gray-700 p-2 text-[11px] rounded" placeholder="Site..." oninput="document.getElementById('draggable-text').innerText=this.value">
+                <input type="text" class="w-full bg-black border border-gray-700 p-2 text-[11px] rounded text-white" placeholder="Site..." oninput="document.getElementById('draggable-text').innerText=this.value">
                 <div class="label-row"><span>MĂRIME TEXT:</span></div>
                 <input type="range" min="0.5" max="4" step="0.1" value="1" oninput="setTextScale(this.value)">
                 <div class="label-row"><span>CULOARE TEXT:</span></div>
@@ -198,7 +200,7 @@
             vid.src = URL.createObjectURL(i.files[0]);
             state.isVideoActive = true;
             vid.style.display = 'block';
-            vid.play();
+            vid.play().catch(e => console.log("Auto-play blocked:", e));
             document.getElementById('btn-vid-toggle').innerText = "VIDEO: ON";
             document.getElementById('btn-vid-toggle').classList.add('active');
             if(state.isSlideshowActive) toggleSlideshow();
@@ -267,10 +269,14 @@
 
     // CAMERA & AI
     async function initCam() {
-        ai.stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        document.getElementById('hidden-video').srcObject = ai.stream;
-        document.getElementById('webcam-layer').style.display = 'block';
-        setupAI();
+        try {
+            ai.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            document.getElementById('hidden-video').srcObject = ai.stream;
+            document.getElementById('webcam-layer').style.display = 'block';
+            setupAI();
+        } catch (err) {
+            alert("Nu s-a putut accesa camera. Verifică permisiunile.");
+        }
     }
     function setupAI() {
         ai.selfie = new SelfieSegmentation({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`});
@@ -282,59 +288,56 @@
             if(state.isAI) { ctx.globalCompositeOperation = 'copy'; ctx.drawImage(res.segmentationMask, 0, 0, c.width, c.height); ctx.globalCompositeOperation = 'source-in'; }
             ctx.drawImage(res.image, 0, 0, c.width, c.height);
         });
-        const predict = async () => { await ai.selfie.send({image: document.getElementById('hidden-video')}); requestAnimationFrame(predict); };
+        const predict = async () => { 
+            if (document.getElementById('hidden-video').readyState >= 2) {
+                await ai.selfie.send({image: document.getElementById('hidden-video')}); 
+            }
+            requestAnimationFrame(predict); 
+        };
         predict();
     }
     function toggleAI() { state.isAI = !state.isAI; document.getElementById('btn-ai').classList.toggle('active'); }
     function loadInnerImage(i) { if(i.files[0]) { document.getElementById('inner-img').src = URL.createObjectURL(i.files[0]); document.getElementById('inner-img').style.display = 'block'; } }
 
-    // RECORDING FUNCTIONS
+    // RECORDING FUNCTIONS COMPATIBILE ANDROID
     async function toggleRecording() {
         if (!isRecording) {
             try {
                 const phoneElement = document.getElementById('phone-container');
-                const canvasStream = phoneElement.captureStream ? phoneElement.captureStream(30) : null;
-                if (!canvasStream) {
-                    alert("Browserul tău nu suportă înregistrarea directă a acestui element.");
+                if (!phoneElement.captureStream) {
+                    alert("Funcția de înregistrare ecran nu este suportată de acest browser mobil. Folosește Google Chrome.");
                     return;
                 }
+                const canvasStream = phoneElement.captureStream(30);
 
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const destination = audioContext.createMediaStreamDestination();
-                let hasAudioSource = false;
+                let combinedStream = canvasStream;
 
-                const bgVideo = document.getElementById('bg-video');
-                if (state.isVideoActive && !bgVideo.muted && bgVideo.src) {
-                    try {
-                        const videoSource = audioContext.createMediaElementSource(bgVideo);
-                        videoSource.connect(destination);
-                        videoSource.connect(audioContext.destination);
-                        hasAudioSource = true;
-                    } catch (e) {
-                        console.log("Eroare audio video:", e);
+                // Încercăm să adăugăm microfonul în înregistrare în siguranță pe mobil
+                try {
+                    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                    const audioTracks = micStream.getAudioTracks();
+                    if (audioTracks.length > 0) {
+                        combinedStream.addTrack(audioTracks[0]);
+                    }
+                } catch (e) {
+                    console.log("Microfonul nu a putut fi atașat la înregistrare:", e);
+                }
+
+                recordedChunks = [];
+                let options = { mimeType: 'video/webm;codecs=vp9,opus' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options = { mimeType: 'video/webm' };
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                        options = {}; // lăsăm browserul să aleagă implicit
                     }
                 }
 
-                try {
-                    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                    const micSource = audioContext.createMediaStreamSource(micStream);
-                    micSource.connect(destination);
-                    hasAudioSource = true;
-                } catch (e) {
-                    console.log("Microfon indisponibil:", e);
-                }
-
-                const tracks = [...canvasStream.getVideoTracks()];
-                if (hasAudioSource) {
-                    tracks.push(...destination.stream.getAudioTracks());
-                }
-                const combinedStream = new MediaStream(tracks);
-
-                recordedChunks = [];
-                mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9' });
+                mediaRecorder = new MediaRecorder(combinedStream, options);
 
                 mediaRecorder.ondataavailable = event => {
-                    if (event.data.size > 0) recordedChunks.push(event.data);
+                    if (event.data && event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
                 };
 
                 mediaRecorder.onstop = () => {
@@ -343,7 +346,7 @@
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = url;
-                    a.download = `ri-studio-recording-${Date.now()}.webm`;
+                    a.download = `ri-studio-${Date.now()}.webm`;
                     document.body.appendChild(a);
                     a.click();
                     setTimeout(() => {
@@ -352,17 +355,19 @@
                     }, 100);
                 };
 
-                mediaRecorder.start();
+                mediaRecorder.start(1000);
                 isRecording = true;
                 document.getElementById('btn-rec').innerText = "⏹️ STOP RECORD";
                 document.getElementById('btn-rec').classList.add('recording');
                 document.getElementById('rec-status').innerText = "ÎNREGISTRARE...";
             } catch (err) {
-                console.error("Eroare înregistrare:", err);
-                alert("Eroare la pornirea înregistrării.");
+                console.error("Eroare înregistrare mobil:", err);
+                alert("Nu s-a putut porni înregistrarea pe acest dispozitiv.");
             }
         } else {
-            mediaRecorder.stop();
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
             isRecording = false;
             document.getElementById('btn-rec').innerText = "🔴 START RECORD";
             document.getElementById('btn-rec').classList.remove('recording');
@@ -370,25 +375,42 @@
         }
     }
 
+    // DRAG AND DROP / TOUCH UNIFIED
     function makeDraggable(el) {
-        let sx, sy;
-        el.onmousedown = e => {
-            sx = e.clientX - el.offsetLeft; sy = e.clientY - el.offsetTop;
-            document.onmousemove = me => { el.style.left = (me.clientX - sx) + 'px'; el.style.top = (me.clientY - sy) + 'px'; };
-            document.onmouseup = () => document.onmousemove = null;
-        };
-        // Touch support pentru telefoane
-        el.ontouchstart = e => {
-            const touch = e.touches[0];
-            sx = touch.clientX - el.offsetLeft; sy = touch.clientY - el.offsetTop;
-            el.ontouchmove = tm => {
-                const tMove = tm.touches[0];
-                el.style.left = (tMove.clientX - sx) + 'px'; el.style.top = (tMove.clientY - sy) + 'px';
-            };
-            el.ontouchend = () => el.ontouchmove = null;
+        let startX = 0, startY = 0, initialX = 0, initialY = 0;
+
+        el.addEventListener('pointerdown', dragStart);
+
+        function dragStart(e) {
+            e.preventDefault();
+            startX = e.clientX;
+            startY = e.clientY;
+            initialX = el.offsetLeft;
+            initialY = el.offsetTop;
+
+            document.addEventListener('pointermove', dragMove);
+            document.addEventListener('pointerup', dragEnd);
+        }
+
+        function dragMove(e) {
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            el.style.left = (initialX + dx) + 'px';
+            el.style.top = (initialY + dy) + 'px';
+        }
+
+        function dragEnd() {
+            document.removeEventListener('pointermove', dragMove);
+            document.removeEventListener('pointerup', dragEnd);
         }
     }
-    window.onload = () => { ['circle-group', 'webcam-layer', 'draggable-text'].forEach(id => makeDraggable(document.getElementById(id))); };
+
+    window.onload = () => { 
+        ['circle-group', 'webcam-layer', 'draggable-text'].forEach(id => {
+            const element = document.getElementById(id);
+            if(element) makeDraggable(element);
+        }); 
+    };
 </script>
 </body>
 </html>
