@@ -216,6 +216,7 @@
     let mediaRecorder;
     let recordedChunks = [];
     let isRecording = false;
+    let recordCanvas, recordCtx, recordInterval;
 
     function loadVideo(i) {
         if(i.files[0]) {
@@ -255,7 +256,6 @@
         updateTransforms(); 
     }
 
-    // Funcție unificată pentru Free Transform / Scalare fluidă pe dispozitive mobile și desktop
     function updateTransforms() {
         const webcam = document.getElementById('webcam-layer');
         const logo = document.getElementById('circle-group');
@@ -355,15 +355,92 @@
         } 
     }
 
+    // --- REZOLVARE FUNCȚIE RECORD (Randare pe Canvas Compatibil) ---
     async function toggleRecording() {
         if (!isRecording) {
             try {
-                const phoneElement = document.getElementById('phone-container');
-                if (!phoneElement.captureStream) {
-                    alert("Funcția de înregistrare ecran nu este suportată. Folosește Google Chrome.");
-                    return;
+                // Creăm un canvas dedicat pentru compunerea ecranului (300x533 format video vertical)
+                recordCanvas = document.createElement('canvas');
+                recordCanvas.width = 300;
+                recordCanvas.height = 533;
+                recordCtx = recordCanvas.getContext('2d');
+
+                const videoEl = document.getElementById('bg-video');
+                const slide1 = document.getElementById('slide-1');
+                const slide2 = document.getElementById('slide-2');
+                const webcamLayer = document.getElementById('webcam-layer');
+                const aiCanvas = document.getElementById('ai-canvas');
+                const circleGroup = document.getElementById('circle-group');
+                const innerImg = document.getElementById('inner-img');
+                const textEl = document.getElementById('draggable-text');
+                const phoneContainer = document.getElementById('phone-container');
+
+                // Buclă care desenează elementele vizuale pe canvasul de înregistrare la 30 FPS
+                function drawRecordingFrame() {
+                    if (!isRecording) return;
+                    recordCtx.fillStyle = "#000";
+                    recordCtx.fillRect(0, 0, recordCanvas.width, recordCanvas.height);
+
+                    // 1. Desenează fundalul (Video sau Slide-uri active)
+                    if (state.isVideoActive && videoEl.readyState >= 2) {
+                        recordCtx.drawImage(videoEl, 0, 0, recordCanvas.width, recordCanvas.height);
+                    } else {
+                        let activeSlide = slide1.classList.contains('slide-active') ? slide1 : (slide2.classList.contains('slide-active') ? slide2 : null);
+                        if (activeSlide && activeSlide.src && activeSlide.style.opacity !== '0') {
+                            recordCtx.drawImage(activeSlide, 0, 0, recordCanvas.width, recordCanvas.height);
+                        }
+                    }
+
+                    // 2. Desenează camera web (dacă e vizibilă)
+                    if (webcamLayer.style.display !== 'none' && aiCanvas.width > 0) {
+                        let rectW = webcamLayer.offsetWidth * state.camScale;
+                        let rectH = webcamLayer.offsetHeight * state.camScale;
+                        let rectX = webcamLayer.offsetLeft;
+                        let rectY = webcamLayer.offsetTop;
+                        recordCtx.drawImage(aiCanvas, rectX, rectY, rectW, rectH);
+                    }
+
+                    // 3. Desenează Logo-ul cerc (dacă e vizibil)
+                    if (circleGroup.style.display !== 'none' && state.isLogoVisible) {
+                        let cSize = 180 * state.logoScale;
+                        let cX = circleGroup.offsetLeft;
+                        let cY = circleGroup.offsetTop;
+                        
+                        recordCtx.save();
+                        recordCtx.beginPath();
+                        recordCtx.arc(cX + cSize/2, cY + cSize/2, (100 * state.logoScale)/2, 0, Math.PI * 2);
+                        recordCtx.closePath();
+                        recordCtx.clip();
+                        if (innerImg.src && innerImg.style.display !== 'none') {
+                            recordCtx.drawImage(innerImg, cX + (cSize - 100*state.logoScale)/2, cY + (cSize - 100*state.logoScale)/2, 100*state.logoScale, 100*state.logoScale);
+                        }
+                        recordCtx.restore();
+
+                        // Conturul cercului
+                        recordCtx.beginPath();
+                        recordCtx.arc(cX + cSize/2, cY + cSize/2, (100 * state.logoScale)/2, 0, Math.PI * 2);
+                        recordCtx.lineWidth = 3;
+                        recordCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--main-color').trim() || '#ffaa00';
+                        recordCtx.stroke();
+                    }
+
+                    // 4. Desenează textul branding
+                    if (textEl.style.display !== 'none' && textEl.innerText.trim() !== "") {
+                        recordCtx.save();
+                        let computedStyle = window.getComputedStyle(textEl);
+                        let fontSize = parseFloat(computedStyle.fontSize) || 16;
+                        recordCtx.font = `900 ${fontSize * parseFloat(textEl.style.transform.replace(/[^0-9.]/g, '') || 1)}px sans-serif`;
+                        recordCtx.fillStyle = textEl.style.color || '#ffffff';
+                        recordCtx.shadowColor = '#000';
+                        recordCtx.shadowBlur = 8;
+                        recordCtx.fillText(textEl.innerText, textEl.offsetLeft, textEl.offsetTop + fontSize);
+                        recordCtx.restore();
+                    }
+
+                    recordInterval = requestAnimationFrame(drawRecordingFrame);
                 }
-                const canvasStream = phoneElement.captureStream(30);
+
+                const canvasStream = recordCanvas.captureStream(30);
                 let combinedStream = canvasStream;
 
                 try {
@@ -395,18 +472,23 @@
                     setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
                 };
 
-                mediaRecorder.start(1000);
                 isRecording = true;
+                drawRecordingFrame();
+                mediaRecorder.start(1000);
+
                 document.getElementById('btn-rec').innerText = "⏹️ STOP RECORD";
                 document.getElementById('btn-rec').classList.add('recording');
                 document.getElementById('rec-status').innerText = "ÎNREGISTRARE...";
             } catch (err) {
                 console.error("Eroare înregistrare:", err);
                 alert("Nu s-a putut porni înregistrarea.");
+                isRecording = false;
             }
         } else {
-            if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
             isRecording = false;
+            cancelAnimationFrame(recordInterval);
+            if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+            
             document.getElementById('btn-rec').innerText = "🔴 START RECORD";
             document.getElementById('btn-rec').classList.remove('recording');
             document.getElementById('rec-status').innerText = "SALVAT!";
