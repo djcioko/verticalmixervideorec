@@ -23,7 +23,6 @@
             padding: 15px 10px;
         }
 
-        /* Container principal care se adaptează: Lângă pe desktop, Sub pe mobil */
         .app-container {
             display: flex;
             flex-direction: row;
@@ -172,7 +171,7 @@
                 <button onclick="document.getElementById('file-slides').click()">UPLOAD POZE</button>
                 <input type="file" id="file-slides" multiple accept="image/*" style="display:none" onchange="loadSlides(this)">
                 <div class="label-row"><span>TIMP POZĂ:</span><span id="val-slide">4</span>s</div>
-                <input type="range" min="1" max="15" value="4" oninput="updateSlideTime(this.value)">
+                <input type="range" id="range-slide" min="1" max="15" value="4" oninput="updateSlideTime(this.value)">
                 <button id="btn-slide" onclick="toggleSlideshow()">START SLIDESHOW</button>
             </div>
 
@@ -181,7 +180,7 @@
                 <button onclick="initCam()">START CAMERA</button>
                 <button id="btn-ai" onclick="toggleAI()">AI CUT: OFF</button>
                 <div class="label-row"><span>MĂRIME CAMERĂ (SCALARE):</span></div>
-                <input type="range" min="0.5" max="3" step="0.1" value="1" oninput="setCamScale(this.value)">
+                <input type="range" id="range-cam-scale" min="0.5" max="3" step="0.1" value="1" oninput="setCamScale(this.value)">
                 
                 <div style="margin-top: 8px;">
                     <button onclick="document.getElementById('file-inner').click()">UPLOAD LOGO (PNG/JPG)</button>
@@ -190,26 +189,42 @@
                 <button id="btn-logo-vis" onclick="toggleLogoVisibility()" style="background: #059669;">LOGO VIZIBIL: ON</button>
                 
                 <div class="label-row"><span>MĂRIME LOGO (SCALARE):</span></div>
-                <input type="range" min="0.3" max="3" step="0.1" value="1" oninput="setLogoScale(this.value)">
+                <input type="range" id="range-logo-scale" min="0.3" max="3" step="0.1" value="1" oninput="setLogoScale(this.value)">
             </div>
 
             <div class="cube">
                 <h4>4. TEXT BRANDING</h4>
-                <input type="text" class="w-full bg-black border border-gray-700 p-2 text-[11px] rounded text-white" placeholder="Site..." oninput="document.getElementById('draggable-text').innerText=this.value">
+                <input type="text" id="input-text-val" class="w-full bg-black border border-gray-700 p-2 text-[11px] rounded text-white" placeholder="Site..." oninput="updateTextContent(this.value)">
                 <div class="label-row"><span>MĂRIME TEXT:</span></div>
-                <input type="range" min="0.5" max="4" step="0.1" value="1" oninput="setTextScale(this.value)">
+                <input type="range" id="range-text-scale" min="0.5" max="4" step="0.1" value="1" oninput="setTextScale(this.value)">
                 <div class="label-row"><span>CULOARE TEXT:</span></div>
-                <input type="color" value="#ffffff" class="w-full h-7 mt-1 border-none cursor-pointer rounded bg-transparent" oninput="document.getElementById('draggable-text').style.color=this.value">
+                <input type="color" id="input-text-color" value="#ffffff" class="w-full h-7 mt-1 border-none cursor-pointer rounded bg-transparent" oninput="setTextColor(this.value)">
             </div>
             
-            <button onclick="location.reload()" class="bg-red-900 text-[10px] opacity-80 py-2">RESET TOT</button>
+            <button onclick="resetAll()" class="bg-red-900 text-[10px] opacity-80 py-2">RESET TOT</button>
         </div>
     </div>
 
     <video id="hidden-video" style="display:none" autoplay muted playsinline></video>
 
 <script>
-    let state = { isAI: false, isSlideshowActive: false, isVideoActive: false, slideTime: 4, isLogoVisible: true, camScale: 1, logoScale: 1 };
+    let state = { 
+        isAI: false, 
+        isSlideshowActive: false, 
+        isVideoActive: false, 
+        slideTime: 4, 
+        isLogoVisible: true, 
+        camScale: 1, 
+        logoScale: 1,
+        textScale: 1,
+        textColor: '#ffffff',
+        textContent: 'WWW.RIBUILDING.RO',
+        positions: {
+            'webcam-layer': {top: '20px', left: '20px'},
+            'circle-group': {top: '110px', left: '50px'},
+            'draggable-text': {bottom: '50px', left: '30px', top: 'auto'}
+        }
+    };
     let slideshow = { files: [], idx: 0, int: null, currentLayer: 1 };
     let ai = { selfie: null, stream: null };
 
@@ -218,18 +233,119 @@
     let isRecording = false;
     let recordCanvas, recordCtx, recordInterval;
 
-    function loadVideo(i) {
-        if(i.files[0]) {
+    // --- SALVARE ȘI ÎNCĂRCARE DIN INDEXEDDB & LOCALSTORAGE ---
+    const DB_NAME = "RIStudioDB", STORE_NAME = "filesStore";
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = e => { e.target.result.createObjectStore(STORE_NAME); };
+            request.onsuccess = e => resolve(e.target.result);
+            request.onerror = e => reject(e.target.error);
+        });
+    }
+
+    async function saveFileToIDB(key, file) {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, "readwrite");
+            tx.objectStore(STORE_NAME).put(file, key);
+            tx.oncomplete = () => resolve();
+            tx.onerror = e => reject(e.target.error);
+        });
+    }
+
+    async function getFileFromIDB(key) {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, "readonly");
+            const req = tx.objectStore(STORE_NAME).get(key);
+            req.onsuccess = e => resolve(e.target.result);
+            req.onerror = e => reject(e.target.error);
+        });
+    }
+
+    function saveState() {
+        localStorage.setItem('ri_studio_state', JSON.stringify(state));
+    }
+
+    async function loadSavedState() {
+        const saved = localStorage.getItem('ri_studio_state');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                state = {...state, ...parsed};
+            } catch(e) {}
+        }
+
+        // Aplicare setări vizuale pe interfață
+        document.getElementById('val-slide').innerText = state.slideTime;
+        document.getElementById('range-slide').value = state.slideTime;
+        document.getElementById('range-cam-scale').value = state.camScale;
+        document.getElementById('range-logo-scale').value = state.logoScale;
+        document.getElementById('range-text-scale').value = state.textScale;
+        document.getElementById('input-text-color').value = state.textColor;
+        document.getElementById('input-text-val').value = state.textContent;
+
+        const textEl = document.getElementById('draggable-text');
+        textEl.innerText = state.textContent;
+        textEl.style.color = state.textColor;
+        textEl.style.transform = `scale(${state.textScale})`;
+
+        updateTransforms();
+
+        // Poziții elemente dragabile
+        ['webcam-layer', 'circle-group', 'draggable-text'].forEach(id => {
+            if (state.positions && state.positions[id]) {
+                const el = document.getElementById(id);
+                el.style.top = state.positions[id].top || '';
+                el.style.left = state.positions[id].left || '';
+                el.style.bottom = state.positions[id].bottom || '';
+            }
+        });
+
+        // Încărcare fișiere salvate
+        const savedVideo = await getFileFromIDB('bg_video');
+        if (savedVideo) {
             const vid = document.getElementById('bg-video');
-            vid.src = URL.createObjectURL(i.files[0]);
+            vid.src = URL.createObjectURL(savedVideo);
+            state.isVideoActive = true;
+            vid.style.display = 'block';
+            vid.play().catch(e => console.log("Auto-play blocked:", e));
+            document.getElementById('btn-vid-toggle').innerText = "VIDEO: ON";
+            document.getElementById('btn-vid-toggle').classList.add('active');
+        }
+
+        const savedLogo = await getFileFromIDB('logo_img');
+        if (savedLogo) {
+            const innerImg = document.getElementById('inner-img');
+            innerImg.src = URL.createObjectURL(savedLogo);
+            if(state.isLogoVisible) innerImg.style.display = 'block';
+        }
+
+        const savedSlides = await getFileFromIDB('slides_arr');
+        if (savedSlides && savedSlides.length > 0) {
+            slideshow.files = savedSlides.map(f => URL.createObjectURL(f));
+            document.getElementById('slide-1').src = slideshow.files[0];
+            document.getElementById('slide-1').classList.add('slide-active');
+        }
+    }
+
+    async function loadVideo(i) {
+        if(i.files[0]) {
+            const file = i.files[0];
+            await saveFileToIDB('bg_video', file);
+            const vid = document.getElementById('bg-video');
+            vid.src = URL.createObjectURL(file);
             state.isVideoActive = true;
             vid.style.display = 'block';
             vid.play().catch(e => console.log("Auto-play blocked:", e));
             document.getElementById('btn-vid-toggle').innerText = "VIDEO: ON";
             document.getElementById('btn-vid-toggle').classList.add('active');
             if(state.isSlideshowActive) toggleSlideshow();
+            saveState();
         }
     }
+
     function toggleVideo() {
         const vid = document.getElementById('bg-video');
         state.isVideoActive = !state.isVideoActive;
@@ -238,22 +354,42 @@
         else vid.pause();
         document.getElementById('btn-vid-toggle').innerText = state.isVideoActive ? "VIDEO: ON" : "VIDEO: OFF";
         document.getElementById('btn-vid-toggle').classList.toggle('active', state.isVideoActive);
+        saveState();
     }
+
     function toggleMute() {
         const vid = document.getElementById('bg-video');
         vid.muted = !vid.muted;
         document.getElementById('btn-vid-mute').innerText = vid.muted ? "🔇 MUTE" : "🔊 SUNET ON";
     }
 
-    function setTextScale(v) { document.getElementById('draggable-text').style.transform = `scale(${v})`; }
+    function setTextScale(v) { 
+        state.textScale = v;
+        document.getElementById('draggable-text').style.transform = `scale(${v})`; 
+        saveState();
+    }
+    
+    function setTextColor(v) {
+        state.textColor = v;
+        document.getElementById('draggable-text').style.color = v;
+        saveState();
+    }
+
+    function updateTextContent(v) {
+        state.textContent = v;
+        document.getElementById('draggable-text').innerText = v;
+        saveState();
+    }
     
     function setCamScale(v) { 
         state.camScale = v; 
         updateTransforms(); 
+        saveState();
     }
     function setLogoScale(v) { 
         state.logoScale = v; 
         updateTransforms(); 
+        saveState();
     }
 
     function updateTransforms() {
@@ -288,13 +424,27 @@
         }
         btn.innerText = state.isLogoVisible ? "LOGO VIZIBIL: ON" : "LOGO VIZIBIL: OFF";
         btn.classList.toggle('active', state.isLogoVisible);
+        saveState();
     }
 
-    function updateSlideTime(v) { state.slideTime = v; document.getElementById('val-slide').innerText = v; if (state.isSlideshowActive) restartSlideshow(); }
-    function loadSlides(i) {
-        slideshow.files = Array.from(i.files).map(f => URL.createObjectURL(f));
-        if(slideshow.files.length > 0) { document.getElementById('slide-1').src = slideshow.files[0]; document.getElementById('slide-1').classList.add('slide-active'); }
+    function updateSlideTime(v) { 
+        state.slideTime = v; 
+        document.getElementById('val-slide').innerText = v; 
+        if (state.isSlideshowActive) restartSlideshow(); 
+        saveState();
     }
+
+    async function loadSlides(i) {
+        const filesArr = Array.from(i.files);
+        if(filesArr.length > 0) {
+            await saveFileToIDB('slides_arr', filesArr);
+            slideshow.files = filesArr.map(f => URL.createObjectURL(f));
+            document.getElementById('slide-1').src = slideshow.files[0];
+            document.getElementById('slide-1').classList.add('slide-active');
+            saveState();
+        }
+    }
+
     function changeSlide() {
         if (!state.isSlideshowActive || slideshow.files.length === 0) return;
         slideshow.idx = (slideshow.idx + 1) % slideshow.files.length;
@@ -305,6 +455,7 @@
         newLayer.classList.add('slide-active');
         oldLayer.classList.remove('slide-active');
     }
+
     function toggleSlideshow() {
         state.isSlideshowActive = !state.isSlideshowActive;
         if(state.isSlideshowActive && state.isVideoActive) toggleVideo();
@@ -313,6 +464,7 @@
         if(state.isSlideshowActive) restartSlideshow();
         else { clearInterval(slideshow.int); document.querySelectorAll('.slide-layer').forEach(l => l.classList.remove('slide-active')); }
     }
+
     function restartSlideshow() { clearInterval(slideshow.int); changeSlide(); slideshow.int = setInterval(changeSlide, state.slideTime * 1000); }
 
     async function initCam() {
@@ -325,6 +477,7 @@
             alert("Nu s-a putut accesa camera. Verifică permisiunile.");
         }
     }
+
     function setupAI() {
         ai.selfie = new SelfieSegmentation({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`});
         ai.selfie.setOptions({ modelSelection: 1 });
@@ -343,23 +496,25 @@
         };
         predict();
     }
+
     function toggleAI() { state.isAI = !state.isAI; document.getElementById('btn-ai').classList.toggle('active'); }
     
-    function loadInnerImage(i) { 
+    async function loadInnerImage(i) { 
         if(i.files[0]) { 
+            const file = i.files[0];
+            await saveFileToIDB('logo_img', file);
             const innerImg = document.getElementById('inner-img');
-            innerImg.src = URL.createObjectURL(i.files[0]); 
+            innerImg.src = URL.createObjectURL(file); 
             if(state.isLogoVisible) {
                 innerImg.style.display = 'block'; 
             }
+            saveState();
         } 
     }
 
-    // --- REZOLVARE FUNCȚIE RECORD (Randare pe Canvas Compatibil) ---
     async function toggleRecording() {
         if (!isRecording) {
             try {
-                // Creăm un canvas dedicat pentru compunerea ecranului (300x533 format video vertical)
                 recordCanvas = document.createElement('canvas');
                 recordCanvas.width = 300;
                 recordCanvas.height = 533;
@@ -373,15 +528,12 @@
                 const circleGroup = document.getElementById('circle-group');
                 const innerImg = document.getElementById('inner-img');
                 const textEl = document.getElementById('draggable-text');
-                const phoneContainer = document.getElementById('phone-container');
 
-                // Buclă care desenează elementele vizuale pe canvasul de înregistrare la 30 FPS
                 function drawRecordingFrame() {
                     if (!isRecording) return;
                     recordCtx.fillStyle = "#000";
                     recordCtx.fillRect(0, 0, recordCanvas.width, recordCanvas.height);
 
-                    // 1. Desenează fundalul (Video sau Slide-uri active)
                     if (state.isVideoActive && videoEl.readyState >= 2) {
                         recordCtx.drawImage(videoEl, 0, 0, recordCanvas.width, recordCanvas.height);
                     } else {
@@ -391,7 +543,6 @@
                         }
                     }
 
-                    // 2. Desenează camera web (dacă e vizibilă)
                     if (webcamLayer.style.display !== 'none' && aiCanvas.width > 0) {
                         let rectW = webcamLayer.offsetWidth * state.camScale;
                         let rectH = webcamLayer.offsetHeight * state.camScale;
@@ -400,7 +551,6 @@
                         recordCtx.drawImage(aiCanvas, rectX, rectY, rectW, rectH);
                     }
 
-                    // 3. Desenează Logo-ul cerc (dacă e vizibil)
                     if (circleGroup.style.display !== 'none' && state.isLogoVisible) {
                         let cSize = 180 * state.logoScale;
                         let cX = circleGroup.offsetLeft;
@@ -416,7 +566,6 @@
                         }
                         recordCtx.restore();
 
-                        // Conturul cercului
                         recordCtx.beginPath();
                         recordCtx.arc(cX + cSize/2, cY + cSize/2, (100 * state.logoScale)/2, 0, Math.PI * 2);
                         recordCtx.lineWidth = 3;
@@ -424,7 +573,6 @@
                         recordCtx.stroke();
                     }
 
-                    // 4. Desenează textul branding
                     if (textEl.style.display !== 'none' && textEl.innerText.trim() !== "") {
                         recordCtx.save();
                         let computedStyle = window.getComputedStyle(textEl);
@@ -447,9 +595,7 @@
                     const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                     const audioTracks = micStream.getAudioTracks();
                     if (audioTracks.length > 0) combinedStream.addTrack(audioTracks[0]);
-                } catch (e) {
-                    console.log("Microfonul nu a putut fi atașat:", e);
-                }
+                } catch (e) {}
 
                 recordedChunks = [];
                 let options = { mimeType: 'video/webm;codecs=vp9,opus' };
@@ -480,7 +626,6 @@
                 document.getElementById('btn-rec').classList.add('recording');
                 document.getElementById('rec-status').innerText = "ÎNREGISTRARE...";
             } catch (err) {
-                console.error("Eroare înregistrare:", err);
                 alert("Nu s-a putut porni înregistrarea.");
                 isRecording = false;
             }
@@ -509,14 +654,29 @@
             const dx = e.clientX - startX; const dy = e.clientY - startY;
             el.style.left = (initialX + dx) + 'px';
             el.style.top = (initialY + dy) + 'px';
+            el.style.bottom = 'auto';
         }
         function dragEnd() {
             document.removeEventListener('pointermove', dragMove);
             document.removeEventListener('pointerup', dragEnd);
+            // Salvare poziție curentă
+            state.positions[el.id] = {
+                top: el.style.top,
+                left: el.style.left,
+                bottom: el.style.bottom
+            };
+            saveState();
         }
     }
 
-    window.onload = () => { 
+    function resetAll() {
+        localStorage.removeItem('ri_studio_state');
+        indexedDB.deleteDatabase(DB_NAME);
+        location.reload();
+    }
+
+    window.onload = async () => { 
+        await loadSavedState();
         ['circle-group', 'webcam-layer', 'draggable-text'].forEach(id => {
             const element = document.getElementById(id);
             if(element) makeDraggable(element);
