@@ -120,7 +120,7 @@
         button.recording { background: #dc2626 !important; animation: pulseRec 1.5s infinite; }
         @keyframes pulseRec { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         input[type="range"] { width: 100%; accent-color: var(--main-color); cursor: pointer; margin-top: 4px; }
-        .label-row { display: flex; justify-content: space-between; font-size: 10px; color: #888; margin-top: 4px; }
+        .label-row { display: flex; justify-content: space-between; font-size: 10px; color: #888; margin-top: 4px; align-items: center; }
     </style>
 </head>
 <body>
@@ -155,7 +155,11 @@
             <div class="cube" style="border-color: #dc2626;">
                 <h4>5. ÎNREGISTRARE VIDEO (REC)</h4>
                 <button id="btn-rec" onclick="toggleRecording()">🔴 START RECORD</button>
-                <div class="label-row"><span>STATUS:</span><span id="rec-status">INACTIV</span></div>
+                <div class="label-row">
+                    <span id="rec-status-label">STATUS: INACTIV</span>
+                    <span id="rec-timer" style="color: #ffaa00; font-weight: bold;">00:00</span>
+                    <span id="rec-saved-label">SALVAT!</span>
+                </div>
             </div>
 
             <div class="cube">
@@ -240,6 +244,7 @@
     let recordedChunks = [];
     let isRecording = false;
     let recordCanvas, recordCtx, recordInterval;
+    let recSeconds = 0, recTimerInterval = null;
 
     // Formatare timp pentru timer (secunde -> mm:ss)
     function formatTime(seconds) {
@@ -577,6 +582,17 @@
                         }
                     }
 
+                    // Randare timp clip urcat pe film (în colțul din stânga sus)
+                    if (state.isVideoActive && !isNaN(videoEl.duration)) {
+                        recordCtx.save();
+                        recordCtx.font = "bold 12px sans-serif";
+                        recordCtx.fillStyle = "rgba(0, 0, 0, 0.6)";
+                        recordCtx.fillRect(10, 10, 85, 22);
+                        recordCtx.fillStyle = "#ffffff";
+                        recordCtx.fillText(`${formatTime(videoEl.currentTime)} / ${formatTime(videoEl.duration)}`, 15, 25);
+                        recordCtx.restore();
+                    }
+
                     if (webcamLayer.style.display !== 'none' && aiCanvas.width > 0) {
                         let rectW = webcamLayer.offsetWidth * state.camScale;
                         let rectH = webcamLayer.offsetHeight * state.camScale;
@@ -625,7 +641,6 @@
                 const canvasStream = recordCanvas.captureStream(30);
                 let combinedStream = canvasStream;
 
-                // Adăugare microfon dacă este activat din buton
                 if (state.isMicActive) {
                     try {
                         const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -637,7 +652,6 @@
                 }
 
                 recordedChunks = [];
-                // Setare prioritară pentru salvare în format MP4 (.mp4), cu fallback pe webm
                 let options = { mimeType: 'video/mp4' };
                 if (!MediaRecorder.isTypeSupported(options.mimeType)) {
                     options = { mimeType: 'video/webm;codecs=vp9,opus' };
@@ -664,12 +678,19 @@
                 };
 
                 isRecording = true;
+                recSeconds = 0;
+                document.getElementById('rec-timer').innerText = "00:00";
+                recTimerInterval = setInterval(() => {
+                    recSeconds++;
+                    document.getElementById('rec-timer').innerText = formatTime(recSeconds);
+                }, 1000);
+
                 drawRecordingFrame();
                 mediaRecorder.start(1000);
 
                 document.getElementById('btn-rec').innerText = "⏹️ STOP RECORD";
                 document.getElementById('btn-rec').classList.add('recording');
-                document.getElementById('rec-status').innerText = "ÎNREGISTRARE...";
+                document.getElementById('rec-status-label').innerText = "STATUS: ÎNREGISTRARE...";
             } catch (err) {
                 alert("Nu s-a putut porni înregistrarea.");
                 isRecording = false;
@@ -677,11 +698,12 @@
         } else {
             isRecording = false;
             cancelAnimationFrame(recordInterval);
+            clearInterval(recTimerInterval);
             if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
             
             document.getElementById('btn-rec').innerText = "🔴 START RECORD";
             document.getElementById('btn-rec').classList.remove('recording');
-            document.getElementById('rec-status').innerText = "SALVAT!";
+            document.getElementById('rec-status-label').innerText = "STATUS: GATA";
         }
     }
 
