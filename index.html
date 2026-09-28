@@ -73,7 +73,7 @@
         #webcam-layer { position: absolute; width: 130px; height: 100px; z-index: 20; cursor: grab; touch-action: none; }
         #ai-canvas { width: 100%; height: 100%; object-fit: cover; }
         #circle-group { position: absolute; width: 180px; height: 180px; z-index: 15; cursor: grab; touch-action: none; display: flex; align-items: center; justify-content: center; }
-        #inner-circle { width: 100px; height: 100px; border: 3px solid var(--main-color); border-radius: 50%; z-index: 16; background: rgba(0,0,0,0.4); overflow: hidden; }
+        #inner-circle { width: 100px; height: 100px; border: 3px solid var(--main-color); border-radius: 50%; z-index: 16; background: rgba(0,0,0,0.4); overflow: hidden; display: flex; align-items: center; justify-content: center; }
         #draggable-text { position: absolute; z-index: 30; cursor: grab; touch-action: none; font-weight: 900; color: white; text-shadow: 2px 2px 8px #000; white-space: nowrap; padding: 5px; }
 
         /* HIDE CONTROLS */
@@ -180,11 +180,16 @@
                 <h4>3. CAMERĂ & LOGO</h4>
                 <button onclick="initCam()">START CAMERA</button>
                 <button id="btn-ai" onclick="toggleAI()">AI CUT: OFF</button>
-                <div class="label-row"><span>MĂRIME CAMERĂ:</span></div>
+                <div class="label-row"><span>MĂRIME CAMERĂ (SCALARE):</span></div>
                 <input type="range" min="0.5" max="3" step="0.1" value="1" oninput="setCamScale(this.value)">
-                <button onclick="document.getElementById('file-inner').click()" class="mt-2">LOGO CERC</button>
-                <input type="file" id="file-inner" style="display:none" onchange="loadInnerImage(this)">
-                <div class="label-row"><span>MĂRIME LOGO:</span></div>
+                
+                <div style="margin-top: 8px;">
+                    <button onclick="document.getElementById('file-inner').click()">UPLOAD LOGO (PNG/JPG)</button>
+                    <input type="file" id="file-inner" accept="image/png, image/jpeg" style="display:none" onchange="loadInnerImage(this)">
+                </div>
+                <button id="btn-logo-vis" onclick="toggleLogoVisibility()" style="background: #059669;">LOGO VIZIBIL: ON</button>
+                
+                <div class="label-row"><span>MĂRIME LOGO (SCALARE):</span></div>
                 <input type="range" min="0.3" max="3" step="0.1" value="1" oninput="setLogoScale(this.value)">
             </div>
 
@@ -204,7 +209,7 @@
     <video id="hidden-video" style="display:none" autoplay muted playsinline></video>
 
 <script>
-    let state = { isAI: false, isSlideshowActive: false, isVideoActive: false, slideTime: 4 };
+    let state = { isAI: false, isSlideshowActive: false, isVideoActive: false, slideTime: 4, isLogoVisible: true, camScale: 1, logoScale: 1 };
     let slideshow = { files: [], idx: 0, int: null, currentLayer: 1 };
     let ai = { selfie: null, stream: null };
 
@@ -240,8 +245,23 @@
     }
 
     function setTextScale(v) { document.getElementById('draggable-text').style.transform = `scale(${v})`; }
-    function setCamScale(v) { document.getElementById('webcam-layer').style.transform = `scale(${v})`; }
-    function setLogoScale(v) { document.getElementById('circle-group').style.transform = `scale(${v})`; }
+    
+    function setCamScale(v) { 
+        state.camScale = v; 
+        updateTransforms(); 
+    }
+    function setLogoScale(v) { 
+        state.logoScale = v; 
+        updateTransforms(); 
+    }
+
+    // Funcție unificată pentru Free Transform / Scalare fluidă pe dispozitive mobile și desktop
+    function updateTransforms() {
+        const webcam = document.getElementById('webcam-layer');
+        const logo = document.getElementById('circle-group');
+        webcam.style.transform = `scale(${state.camScale})`;
+        logo.style.transform = `scale(${state.logoScale})`;
+    }
 
     function toggleElement(elementId, btnId, name) {
         const el = document.getElementById(elementId);
@@ -255,6 +275,19 @@
             btn.classList.add('hidden-state');
             btn.innerText = `HIDE ${name}: ON`;
         }
+    }
+
+    function toggleLogoVisibility() {
+        state.isLogoVisible = !state.isLogoVisible;
+        const innerImg = document.getElementById('inner-img');
+        const btn = document.getElementById('btn-logo-vis');
+        if(state.isLogoVisible && innerImg.src) {
+            innerImg.style.display = 'block';
+        } else {
+            innerImg.style.display = 'none';
+        }
+        btn.innerText = state.isLogoVisible ? "LOGO VIZIBIL: ON" : "LOGO VIZIBIL: OFF";
+        btn.classList.toggle('active', state.isLogoVisible);
     }
 
     function updateSlideTime(v) { state.slideTime = v; document.getElementById('val-slide').innerText = v; if (state.isSlideshowActive) restartSlideshow(); }
@@ -311,7 +344,16 @@
         predict();
     }
     function toggleAI() { state.isAI = !state.isAI; document.getElementById('btn-ai').classList.toggle('active'); }
-    function loadInnerImage(i) { if(i.files[0]) { document.getElementById('inner-img').src = URL.createObjectURL(i.files[0]); document.getElementById('inner-img').style.display = 'block'; } }
+    
+    function loadInnerImage(i) { 
+        if(i.files[0]) { 
+            const innerImg = document.getElementById('inner-img');
+            innerImg.src = URL.createObjectURL(i.files[0]); 
+            if(state.isLogoVisible) {
+                innerImg.style.display = 'block'; 
+            }
+        } 
+    }
 
     async function toggleRecording() {
         if (!isRecording) {
